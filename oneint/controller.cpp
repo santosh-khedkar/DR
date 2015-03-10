@@ -20,22 +20,22 @@ void* trafficthread(void *args){
 		switch(count){
 			case 0: 
 				traffic_sig='A';
-				usleep(1000000);
+				usleep(10000000);
 				count++;
 				break;
 			case 1:
 				traffic_sig='B';
-				usleep(10000);
+				usleep(1000000);
 				count++;
 				break;
 			case 2: 
 				traffic_sig='C';
-				usleep(1000000);
+				usleep(10000000);
 				count++;
 				break;
 			case 3: 
 				traffic_sig='D';
-				usleep(10000);
+				usleep(1000000);
 				count=0;
 				break;
 			default:
@@ -48,6 +48,7 @@ void* trafficthread(void *args){
 
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){	
+	return;
 	u_char *pac = (u_char*)pack;
 	struct state_t *st = (struct state_t *)(pac);
 	if(st->direction=='S'){
@@ -94,6 +95,7 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 
 void* sniffingthread(void *args){
 		struct state_t upst;
+		const u_char *pack;
 		pcap_t *handle;			/* Session handle */
 		char *dev=(char*)args;		/* The device to sniff on */
 		char errbuf[PCAP_ERRBUF_SIZE];	/* Error string */
@@ -103,7 +105,7 @@ void* sniffingthread(void *args){
 		char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
 		struct pcap_pkthdr header;	/* The header that pcap gives us */
 		const u_char *packet;		/* The actual packet */	
-		strcpy(filter_exp,"!(ether proto 0x88cc)");
+		//strcpy(filter_exp,"!(ether proto 0x88cc)");
 		
 		/* Find the properties for the device */
 		if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
@@ -118,22 +120,23 @@ void* sniffingthread(void *args){
 			exit(1);
 		}
 		/* Compile and apply the filter */
-		if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+		/*if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
 			fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
 			exit(0);
 		}
 		if (pcap_setfilter(handle, &fp) == -1) {
 			fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
 			exit(0);
-		}
+		}*/
 		
-		while(1){
+		//while(1){
 			updt=0;
-			pcap_loop(handle,1,procpkt,NULL);
+			pack=pcap_next(handle,NULL);
+			printf("EXITED");
 			upst.direction=traffic_sig;
 			upst.state=updt;
 			int result = pcap_inject(handle,&upst,sizeof(state_t));
-		}
+		//}
 		pcap_close(handle);	
 }
 
@@ -142,14 +145,14 @@ void* sniffingthread(void *args){
 int main(int argc, char *argv[]){
 	pthread_t thread1,thread2,thread3,thread4,traffic_t;
 	pthread_create(&thread1,NULL,sniffingthread,argv[1]);
-	pthread_create(&thread2,NULL,sniffingthread,argv[2]);
+	/*pthread_create(&thread2,NULL,sniffingthread,argv[2]);
 	pthread_create(&thread3,NULL,sniffingthread,argv[3]);
-	pthread_create(&thread4,NULL,sniffingthread,argv[4]);
+	pthread_create(&thread4,NULL,sniffingthread,argv[4]);*/
 	pthread_create(&traffic_t,NULL,trafficthread,NULL);
 	pthread_join(thread1,NULL);		
-	pthread_join(thread2,NULL);
+	/*pthread_join(thread2,NULL);
 	pthread_join(thread3,NULL);
-	pthread_join(thread4,NULL);
+	pthread_join(thread4,NULL);*/
 	pthread_join(traffic_t,NULL);		
 	return(0);
 }
