@@ -1,6 +1,7 @@
 #include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "packethdr.h"
 #include <string.h>
 #include <queue>
@@ -8,9 +9,9 @@
 
 using namespace std;
 
-queue<packet*> Q9;
-queue<packet*> Q8;
 queue<packet*> Q7;
+queue<packet*> Q8;
+queue<packet*> Q9;
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
@@ -68,18 +69,91 @@ void* sniffingthread(void *args){
 		pcap_close(handle);	
 }
 
+void Take_action(struct state_t *st){
+	u_short state = 0;
+	int PS=0;
+	state=state|st->state;
+	state=state&63;
+	if(st->direction=='C' || st->direction=='D'){
+		if(state&1){
+			Q7.pop();
+		}
+	}
+	else if(st->direction=='A'){
+		if(state==10 || state==11 || state==14 || state==15 || state==42 || state==43 || state==46 || state==47){
+			PS=1;
+		}
+		else if( (state>=26 && state<=31) || (state>=56 && state<=63) ){
+			PS=2;
+		}
+		else if((state>=20 && state<=23) || (state>=52 && state<=55)){
+			PS=3;
+		}
+		if(PS==0 || PS==1){
+			if(state&1){
+				Q7.pop();
+			}
+			if(state&(1<<1)){
+				Q8.pop();
+			}
+			if(state&(1<<2)){
+				Q9.pop();
+			}
+		}
+		else if(PS==3 || PS==2){
+			if(!(state&(1<<4))){
+				Q9.pop();
+			}
+			if(state&(1<<1)){
+				Q8.pop();
+			}
+			if(state&1){
+				Q7.pop();
+			}
+		}		
+	}
+	else if(st->direction=='B'){
+		if(state&1){
+			Q7.pop();
+		}
+		if(state&(1<<2)){
+			Q9.pop();
+		}
+	}
+}
+
+
 void *servicethread(void *args){
 	struct state_t st;
 	st.state=0;
-	st.direction='N';
+	st.direction='S';
 	pcap_t *handle = NULL;
 	char errbuf[PCAP_ERRBUF_SIZE], *device;
 	device = (char*)args;
+	bpf_u_int32 mask;		/* Our netmask */
+	bpf_u_int32 net;		/* Our IP */
+	struct bpf_program fp;		/* The compiled filter */
+		
+	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
+	strcpy(filter_exp,"!(ether proto 0x88cc)");
 
-
+	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
+		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", device, errbuf);
+		net = 0;
+		mask = 0;
+	}
 	if ((handle = pcap_open_live(device, BUFSIZ, 1, 0, errbuf)) == NULL) {
   		fprintf(stderr, "ERROR: %s\n", errbuf);
   		exit(1);
+	}
+	/* Compile and apply the filter */
+	if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+		exit(0);
+	}
+	if (pcap_setfilter(handle, &fp) == -1) {
+		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+		exit(0);
 	}
 	while(1){
 		if(!Q7.empty()){
@@ -90,11 +164,12 @@ void *servicethread(void *args){
 		}
 		if(!Q9.empty()){
 			st.state=st.state|4;
-		}
+		}	
 		int result = pcap_inject(handle,&st,sizeof(state_t));
+		usleep(100000);
 		st.state=0;		
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
-		printf("\nstate:%d",st.state);
+		Take_action(&st);
 	}
 }
 

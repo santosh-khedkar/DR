@@ -48,17 +48,17 @@ void* sniffingthread(void *args){
 			exit(0);
 		}
 		
-		pcap_loop(handle,-1,procpkt,NULL);
+		pcap_loop(handle,10,procpkt,NULL);
 		pcap_close(handle);		
 }
 
 int main(int argc, char *argv[]){
 		pthread_t thread1,thread2,thread3;
 		pthread_create(&thread1,NULL,sniffingthread,argv[1]);
-		pthread_create(&thread2,NULL,sniffingthread,argv[2]);
-		pthread_create(&thread3,NULL,sniffingthread,argv[3]);
+		/*pthread_create(&thread2,NULL,sniffingthread,argv[2]);
+		pthread_create(&thread3,NULL,sniffingthread,argv[3]);*/
 		pthread_join(thread1,NULL);		
-		pthread_join(thread2,NULL);
-		pthread_join(thread3,NULL);
+		/*pthread_join(thread2,NULL);
+		pthread_join(thread3,NULL);*/
 		return(0);
 	 }

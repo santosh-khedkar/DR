@@ -1,3 +1,4 @@
+#include <iostream>
 #include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,12 +8,50 @@
 #include <queue>
 #include <pthread.h>
 
+using namespace std;
+
 char traffic_sig;
 u_char dir=0; /*0000NSWE*/
-u_short updt=0; 
+u_short updt=0; /*0000|Q4|Q5|Q6|Q12|Q11|Q10|Q1|Q2|Q3|Q9|Q8|Q7|*/
+u_int Transaction=1;
+u_int dir_c=1;
 
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+
+void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
+	u_char *pac = (u_char*)pack;
+	struct state_t *st = (struct state_t *)(pac);
+	//cout<<st->state<<" "<<st->direction;
+
+	if(st->direction=='S'){
+		pthread_mutex_lock(&m);
+		updt=updt|st->state;
+		dir=dir|4;
+		pthread_mutex_unlock(&m);
+	}
+	else if(st->direction=='N'){
+		pthread_mutex_lock(&m);
+		updt=updt|(st->state<<3);
+		dir=dir|8;
+		pthread_mutex_unlock(&m);
+	}
+	else if(st->direction=='W'){
+		pthread_mutex_lock(&m);
+		updt=updt|(st->state<<6);
+		dir=dir|2;
+		pthread_mutex_unlock(&m);
+	}
+	else if(st->direction=='E'){
+		pthread_mutex_lock(&m);
+		updt=updt|(st->state<<9);
+		dir=dir|1;
+		pthread_mutex_unlock(&m);
+	}
+	while(dir!=15);
+
+}
+
+
 
 void* trafficthread(void *args){
 	int count=0;
@@ -83,52 +122,21 @@ void* sniffingthread(void *args){
 	}
 		
 	while(1){
-		pack=pcap_next(handle,NULL);
-		u_char *pac = (u_char*)pack;
-		struct state_t *st = (struct state_t *)(pac);
-		if(st->direction=='S'){
-			updt=updt|st->state;
-			dir=dir|4;
-			if(dir==15){
-				pthread_mutex_lock(&m);
-				pthread_cond_broadcast(&cv);
-				pthread_mutex_unlock(&m);
-			}
-		}
-		else if(st->direction=='N'){
-			updt=updt|(st->state<<3);
-			dir=dir|8;
-			if(dir==15){
-				pthread_mutex_lock(&m);
-				pthread_cond_broadcast(&cv);
-				pthread_mutex_unlock(&m);
-			}
-		}
-		else if(st->direction=='W'){
-			updt=updt|(st->state<<6);
-			dir=dir|2;
-			if(dir==15){
-				pthread_mutex_lock(&m);
-				pthread_cond_broadcast(&cv);
-				pthread_mutex_unlock(&m);
-			}
-		}
-		else if(st->direction=='E'){
-			updt=updt|(st->state<<9);
-			dir=dir|1;
-			if(dir==15){
-				pthread_mutex_lock(&m);
-				pthread_cond_broadcast(&cv);
-				pthread_mutex_unlock(&m);
-			}
-		}
-		pthread_mutex_lock(&m);
-		while(dir!=15)
-			pthread_cond_wait(&cv,&m);
-		pthread_mutex_unlock(&m);
+		struct state upst;
+		pcap_loop(handle,1,procpkt,NULL);
 		upst.direction=traffic_sig;
 		upst.state=updt;
+		pthread_mutex_lock(&m);
+		dir_c++;
+		if(dir_c==4){
+			dir_c=1;
+			dir=0;
+			updt=0;
+			Transaction++;
+		}
+		pthread_mutex_unlock(&m);
 		int result = pcap_inject(handle,&upst,sizeof(state_t));
+
 	}		
 		pcap_close(handle);	
 }
@@ -146,6 +154,5 @@ int main(int argc, char *argv[]){
 	pthread_join(thread2,NULL);
 	pthread_join(thread3,NULL);
 	pthread_join(thread4,NULL);
-	pthread_join(traffic_t,NULL);		
 	return(0);
 }
