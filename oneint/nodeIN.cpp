@@ -41,7 +41,7 @@ void* sniffingthread(void *args){
 		char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
 		struct pcap_pkthdr header;	/* The header that pcap gives us */
 		const u_char *packet;		/* The actual packet */	
-		strcpy(filter_exp,"!(ether proto 0x88cc)");
+		strncpy(filter_exp,"!(ether proto 0x88cc)",22);
 		
 		/* Find the properties for the device */
 		if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
@@ -74,9 +74,12 @@ void Take_action(struct state_t *st){
 	int PS=0;
 	state=state|st->state;
 	state=state&63;
+	printf("STATE:%d\n",state);
+	printf("DIRECTION:%c\n",st->direction);
 	if(st->direction=='C' || st->direction=='D'){
 		if(state&(1<<5)){
 			Q1.pop();
+			printf("Servicing Q1\n");
 		}
 	}
 	else if(st->direction=='A'){
@@ -89,35 +92,44 @@ void Take_action(struct state_t *st){
 		else if((state>=20 && state<=23) || (state>=52 && state<=55)){
 			PS=3;
 		}
+		printf("PROBLEM_STATE:%d\n", PS);
 		if(PS==0 || PS==3){
 			if(state&(1<<3)){
 				Q3.pop();
+				printf("Servicing Q3\n");
 			}
 			if(state&(1<<4)){
 				Q2.pop();
+				printf("Servicing Q2\n");
 			}
 			if(state&(1<<5)){
 				Q1.pop();
+				printf("Servicing Q1\n");
 			}
 		}
 		else if(PS==1 || PS==2){
 			if(!(state&(1<<1))){
 				Q3.pop();
+				printf("Servicing Q3\n");
 			}
 			if(state&(1<<4)){
 				Q2.pop();
+				printf("Servicing Q2\n");
 			}
 			if(state&(1<<5)){
 				Q1.pop();
+				printf("Servicing Q1\n");
 			}
 		}		
 	}
 	if(st->direction=='B'){
 		if(state&(1<<3)){
 			Q3.pop();
+			printf("Servicing Q3\n");
 		}
 		if(state&(1<<5)){
 			Q1.pop();
+			printf("Servicing Q1\n");
 		}
 	}
 }
@@ -126,7 +138,7 @@ void Take_action(struct state_t *st){
 void *servicethread(void *args){
 	struct state_t st;
 	st.state=0;
-	st.direction='E';
+	st.direction='N';
 	pcap_t *handle = NULL;
 	char errbuf[PCAP_ERRBUF_SIZE], *device;
 	device = (char*)args;
@@ -135,7 +147,7 @@ void *servicethread(void *args){
 	struct bpf_program fp;		/* The compiled filter */
 		
 	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
-	strcpy(filter_exp,"!(ether proto 0x88cc)");
+	strncpy(filter_exp,"!(ether proto 0x88cc)",22);
 
 	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", device, errbuf);
@@ -170,6 +182,8 @@ void *servicethread(void *args){
 		st.state=0;		
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
 		Take_action(&st);
+		st.state=0;
+		usleep(100000);
 	}
 }
 

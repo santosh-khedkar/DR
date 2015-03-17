@@ -75,9 +75,12 @@ void Take_action(struct state_t *st){
 	state=state|st->state;
 	state=state>>6;
 	state=state&63;
+	printf("STATE:%d\n",state);
+	printf("DIRECTION:%c\n",st->direction);
 	if(st->direction=='A' || st->direction=='B'){
 		if(state&(1<<5)){
 			Q4.pop();
+			printf("Sevicing Q4\n");
 		}
 	}
 	else if(st->direction=='C'){
@@ -90,35 +93,45 @@ void Take_action(struct state_t *st){
 		else if((state>=20 && state<=23) || (state>=52 && state<=55)){
 			PS=3;
 		}
+		printf("PROBLEM_STATE:%d\n", PS);
 		if(PS==0 || PS==3){
 			if(state&(1<<3)){
 				Q6.pop();
+				printf("Sevicing Q6\n");
 			}
 			if(state&(1<<4)){
 				Q5.pop();
+				printf("Sevicing Q5\n");
+
 			}
 			if(state&(1<<5)){
 				Q4.pop();
+				printf("Sevicing Q4\n");
 			}
 		}
 		else if(PS==1 || PS==2){
 			if(!(state&(1<<1))){
 				Q6.pop();
+				printf("Sevicing Q6\n");
 			}
 			if(state&(1<<4)){
 				Q5.pop();
+				printf("Sevicing Q5\n");
 			}
 			if(state&(1<<5)){
 				Q4.pop();
+				printf("Sevicing Q4\n");
 			}
 		}		
 	}
 	if(st->direction=='D'){
 		if(state&(1<<3)){
 			Q6.pop();
+			printf("Sevicing Q6\n");
 		}
 		if(state&(1<<5)){
 			Q4.pop();
+			printf("Sevicing Q4\n");
 		}
 	}
 }
@@ -136,7 +149,7 @@ void *servicethread(void *args){
 	struct bpf_program fp;		/* The compiled filter */
 		
 	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
-	strcpy(filter_exp,"!(ether proto 0x88cc)");
+	strncpy(filter_exp,"!(ether proto 0x88cc)",22);
 
 	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", device, errbuf);
@@ -171,6 +184,8 @@ void *servicethread(void *args){
 		st.state=0;		
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
 		Take_action(&st);
+		st.state=0;
+		usleep(100000);
 	}
 }
 

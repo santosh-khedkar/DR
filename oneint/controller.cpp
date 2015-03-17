@@ -25,30 +25,34 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 
 	if(st->direction=='S'){
 		pthread_mutex_lock(&m);
+		printf("UPDATING SOUTH\n");
 		updt=updt|st->state;
 		dir=dir|4;
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='N'){
 		pthread_mutex_lock(&m);
+		printf("UPDATING NORTH\n");
 		updt=updt|(st->state<<3);
 		dir=dir|8;
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='W'){
 		pthread_mutex_lock(&m);
+		printf("UPDATING WEST\n");
 		updt=updt|(st->state<<6);
 		dir=dir|2;
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='E'){
 		pthread_mutex_lock(&m);
+		printf("UPDATING EAST\n");
 		updt=updt|(st->state<<9);
 		dir=dir|1;
 		pthread_mutex_unlock(&m);
 	}
+	printf("dir:%d\n",dir);
 	while(dir!=15);
-
 }
 
 
@@ -97,7 +101,7 @@ void* sniffingthread(void *args){
 	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
 	struct pcap_pkthdr header;	/* The header that pcap gives us */
 	const u_char *packet;		/* The actual packet */	
-	strcpy(filter_exp,"!(ether proto 0x88cc)");
+	strncpy(filter_exp,"!(ether proto 0x88cc)",22);
 		
 	/* Find the properties for the device */
 	if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
@@ -121,8 +125,7 @@ void* sniffingthread(void *args){
 		exit(0);
 	}
 		
-	while(1){
-		struct state upst;
+	while(1){		
 		pcap_loop(handle,1,procpkt,NULL);
 		upst.direction=traffic_sig;
 		upst.state=updt;
@@ -133,10 +136,10 @@ void* sniffingthread(void *args){
 			dir=0;
 			updt=0;
 			Transaction++;
+			printf("END OF TRANSACTION\n");
 		}
 		pthread_mutex_unlock(&m);
 		int result = pcap_inject(handle,&upst,sizeof(state_t));
-
 	}		
 		pcap_close(handle);	
 }
