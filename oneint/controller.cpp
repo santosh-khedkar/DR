@@ -17,17 +17,21 @@ u_int Transaction=1;
 u_int dir_c=1;
 
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
 	struct state_t *st = (struct state_t *)(pac);
-	//cout<<st->state<<" "<<st->direction;
-
+	
 	if(st->direction=='S'){
 		pthread_mutex_lock(&m);
 		printf("UPDATING SOUTH\n");
 		updt=updt|st->state;
 		dir=dir|4;
+		if(dir==15){
+			printf("GOT UPDATE FROM EVERYWHERE!\n");
+			pthread_cond_broadcast(&cv);
+		}
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='N'){
@@ -35,6 +39,10 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 		printf("UPDATING NORTH\n");
 		updt=updt|(st->state<<3);
 		dir=dir|8;
+		if(dir==15){
+			printf("GOT UPDATE FROM EVERYWHERE!\n");
+			pthread_cond_broadcast(&cv);
+		}
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='W'){
@@ -42,6 +50,10 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 		printf("UPDATING WEST\n");
 		updt=updt|(st->state<<6);
 		dir=dir|2;
+		if(dir==15){
+			printf("GOT UPDATE FROM EVERYWHERE!\n");
+			pthread_cond_broadcast(&cv);
+		}
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='E'){
@@ -49,10 +61,16 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 		printf("UPDATING EAST\n");
 		updt=updt|(st->state<<9);
 		dir=dir|1;
+		if(dir==15){
+			printf("GOT UPDATE FROM EVERYWHERE!\n");
+			pthread_cond_broadcast(&cv);
+		}
 		pthread_mutex_unlock(&m);
 	}
-	printf("dir:%d\n",dir);
-	while(dir!=15);
+	pthread_mutex_lock(&m);
+	while(dir!=15)
+		pthread_cond_wait(&cv,&m);
+	pthread_mutex_unlock(&m);
 }
 
 
@@ -98,37 +116,43 @@ void* sniffingthread(void *args){
 	bpf_u_int32 mask;		/* Our netmask */
 	bpf_u_int32 net;		/* Our IP */
 	struct bpf_program fp;		/* The compiled filter */
-	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
+	char filter_exp[]="not ether proto 0x88cc"; 	/* The filter expression */
 	struct pcap_pkthdr header;	/* The header that pcap gives us */
 	const u_char *packet;		/* The actual packet */	
-	strncpy(filter_exp,"!(ether proto 0x88cc)",22);
-		
+	printf("SNIFFING INTERFACE:%s\n",dev);
 	/* Find the properties for the device */
 	if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev, errbuf);
 		net = 0;
 		mask = 0;
 	}
+
 	/* Open the session in promiscuous mode */
 	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
 	if (handle == NULL) {
 		fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
-		exit(1);
+		return (void*)2;
 	}
+	pthread_mutex_lock(&m);
 	/* Compile and apply the filter */
 	if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
-		exit(0);
+		return (void*)2;
 	}
 	if (pcap_setfilter(handle, &fp) == -1) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
-		exit(0);
+		return (void*)2;
 	}
+	pthread_mutex_unlock(&m);
 		
-	while(1){		
+	while(1){
+		printf("WAITING FOR UPDATE\n");		
 		pcap_loop(handle,1,procpkt,NULL);
 		upst.direction=traffic_sig;
 		upst.state=updt;
+		usleep(1000000);
+		printf("INJECTING UPDATE\n");
+		int result = pcap_inject(handle,&upst,sizeof(state_t));
 		pthread_mutex_lock(&m);
 		dir_c++;
 		if(dir_c==4){
@@ -139,7 +163,7 @@ void* sniffingthread(void *args){
 			printf("END OF TRANSACTION\n");
 		}
 		pthread_mutex_unlock(&m);
-		int result = pcap_inject(handle,&upst,sizeof(state_t));
+		usleep(1000000);
 	}		
 		pcap_close(handle);	
 }

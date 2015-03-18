@@ -13,6 +13,8 @@ queue<packet*> Q1;
 queue<packet*> Q2;
 queue<packet*> Q3;
 
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
 	struct packet *pkt = (struct packet *)(pac);
@@ -55,6 +57,8 @@ void* sniffingthread(void *args){
 			fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
 			exit(1);
 		}
+
+		pthread_mutex_lock(&m);
 		/* Compile and apply the filter */
 		if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
 			fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
@@ -64,6 +68,7 @@ void* sniffingthread(void *args){
 			fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
 			exit(0);
 		}
+		pthread_mutex_unlock(&m);
 		
 		pcap_loop(handle,-1,procpkt,NULL);
 		pcap_close(handle);	
@@ -146,18 +151,18 @@ void *servicethread(void *args){
 	bpf_u_int32 net;		/* Our IP */
 	struct bpf_program fp;		/* The compiled filter */
 		
-	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
-	strncpy(filter_exp,"!(ether proto 0x88cc)",22);
-
+	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", device, errbuf);
 		net = 0;
 		mask = 0;
+		exit(0);
 	}
 	if ((handle = pcap_open_live(device, BUFSIZ, 1, 0, errbuf)) == NULL) {
   		fprintf(stderr, "ERROR: %s\n", errbuf);
   		exit(1);
 	}
+	pthread_mutex_lock(&m);
 	/* Compile and apply the filter */
 	if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
@@ -167,6 +172,7 @@ void *servicethread(void *args){
 		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		exit(0);
 	}
+	pthread_mutex_unlock(&m);
 	while(1){
 		if(!Q3.empty()){
 			st.state=st.state|1;
@@ -177,13 +183,17 @@ void *servicethread(void *args){
 		if(!Q1.empty()){
 			st.state=st.state|4;
 		}	
+		printf("----------------------------------\n");
+		printf("INJECTING UPDATE\n");	
 		int result = pcap_inject(handle,&st,sizeof(state_t));
-		usleep(100000);
-		st.state=0;		
+		usleep(1000000);
+		st.state=0;
+		printf("WAITING FOR UPDATE FROM CONTROLLER\n");		
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
 		Take_action(&st);
+		printf("----------------------------------\n");
 		st.state=0;
-		usleep(100000);
+		usleep(1000000);
 	}
 }
 
