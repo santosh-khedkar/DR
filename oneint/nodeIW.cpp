@@ -151,12 +151,7 @@ void *servicethread(void *args){
 	bpf_u_int32 net;		/* Our IP */
 	struct bpf_program fp;		/* The compiled filter */
 		
-	char *filter_exp=(char*)malloc(sizeof(char)*30); 	/* The filter expression */
-	if(filter_exp==NULL){
-		printf("ERROR: malloc failed: Filter exp\n");
-		exit(0);
-	}
-	strncpy(filter_exp,"!(ether proto 0x88cc)",22);
+	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 
 	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", device, errbuf);

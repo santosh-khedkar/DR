@@ -116,7 +116,7 @@ void* sniffingthread(void *args){
 	bpf_u_int32 mask;		/* Our netmask */
 	bpf_u_int32 net;		/* Our IP */
 	struct bpf_program fp;		/* The compiled filter */
-	char filter_exp[]="not ether proto 0x88cc"; 	/* The filter expression */
+	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	struct pcap_pkthdr header;	/* The header that pcap gives us */
 	const u_char *packet;		/* The actual packet */	
 	printf("SNIFFING INTERFACE:%s\n",dev);
