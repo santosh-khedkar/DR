@@ -10,14 +10,10 @@
 
 using namespace std;
 
-char traffic_sig;
-u_char dir=0; /*0000NSWE*/
+char traffic_sig='-';
 u_short updt=0; /*0000|Q4|Q5|Q6|Q12|Q11|Q10|Q1|Q2|Q3|Q9|Q8|Q7|*/
-u_int Transaction=1;
-u_int dir_c=1;
 
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
@@ -25,52 +21,31 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 	
 	if(st->direction=='S'){
 		pthread_mutex_lock(&m);
-		printf("UPDATING SOUTH\n");
+		printf("GOT SOUTH UPDATE\n");
 		updt=updt|st->state;
-		dir=dir|4;
-		if(dir==15){
-			printf("GOT UPDATE FROM EVERYWHERE!\n");
-			pthread_cond_broadcast(&cv);
-		}
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='N'){
 		pthread_mutex_lock(&m);
-		printf("UPDATING NORTH\n");
+		printf("GOT NORTH UPDATE\n");
 		updt=updt|(st->state<<3);
-		dir=dir|8;
-		if(dir==15){
-			printf("GOT UPDATE FROM EVERYWHERE!\n");
-			pthread_cond_broadcast(&cv);
-		}
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='W'){
 		pthread_mutex_lock(&m);
-		printf("UPDATING WEST\n");
+		printf("GOT WEST UPDATE\n");
 		updt=updt|(st->state<<6);
-		dir=dir|2;
-		if(dir==15){
-			printf("GOT UPDATE FROM EVERYWHERE!\n");
-			pthread_cond_broadcast(&cv);
-		}
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='E'){
 		pthread_mutex_lock(&m);
-		printf("UPDATING EAST\n");
+		printf("GOT EAST UPDATE\n");
 		updt=updt|(st->state<<9);
-		dir=dir|1;
-		if(dir==15){
-			printf("GOT UPDATE FROM EVERYWHERE!\n");
-			pthread_cond_broadcast(&cv);
-		}
 		pthread_mutex_unlock(&m);
 	}
-	pthread_mutex_lock(&m);
-	while(dir!=15)
-		pthread_cond_wait(&cv,&m);
-	pthread_mutex_unlock(&m);
+	else{
+		printf("UPDATE LOST\n");
+	}
 }
 
 
@@ -119,7 +94,6 @@ void* sniffingthread(void *args){
 	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	struct pcap_pkthdr header;	/* The header that pcap gives us */
 	const u_char *packet;		/* The actual packet */	
-	printf("SNIFFING INTERFACE:%s\n",dev);
 	/* Find the properties for the device */
 	if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev, errbuf);
@@ -146,36 +120,160 @@ void* sniffingthread(void *args){
 	pthread_mutex_unlock(&m);
 		
 	while(1){
-		printf("WAITING FOR UPDATE\n");		
 		pcap_loop(handle,1,procpkt,NULL);
-		upst.direction=traffic_sig;
-		upst.state=updt;
-		usleep(1000000);
-		printf("INJECTING UPDATE\n");
-		int result = pcap_inject(handle,&upst,sizeof(state_t));
-		pthread_mutex_lock(&m);
-		dir_c++;
-		if(dir_c==4){
-			dir_c=1;
-			dir=0;
-			updt=0;
-			Transaction++;
-			printf("END OF TRANSACTION\n");
-		}
 		pthread_mutex_unlock(&m);
-		usleep(1000000);
 	}		
 		pcap_close(handle);	
 }
 
+void* send_update_thread(void *args){
+	struct state_t upst;
+	const u_char *pack;
+	u_int Transaction=1;
+	pcap_t *handle1,*handle2,*handle3,*handle4;			/* Session handle */
+	char **dev=(char**)args;		/* The device to sniff on */
+	char errbuf1[PCAP_ERRBUF_SIZE],errbuf2[PCAP_ERRBUF_SIZE],errbuf3[PCAP_ERRBUF_SIZE],errbuf4[PCAP_ERRBUF_SIZE];	/* Error string */
+	bpf_u_int32 mask1,mask2,mask3,mask4;		/* Our netmask */
+	bpf_u_int32 net1,net2,net3,net4;		/* Our IP */
+	struct bpf_program fp1,fp2,fp3,fp4;		/* The compiled filter */
+	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
+	struct pcap_pkthdr header;	/* The header that pcap gives us */
+	const u_char *packet;		/* The actual packet */
+	//-----------------------------------------------------------------------------------------------	
+	/* Find the properties for the device */
+	if (pcap_lookupnet(dev[1], &net1, &mask1, errbuf1) == -1) {
+		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev[1], errbuf1);
+		net1 = 0;
+		mask1 = 0;
+	}
+
+	/* Open the session in promiscuous mode */
+	handle1 = pcap_open_live(dev[1], BUFSIZ, 1, 1000, errbuf1);
+	if (handle1 == NULL) {
+		fprintf(stderr, "Couldn't open device %s: %s\n", dev[1], errbuf1);
+		return (void*)2;
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------	
+	
+	//-----------------------------------------------------------------------------------------------	
+	/* Find the properties for the device */
+	if (pcap_lookupnet(dev[2], &net2, &mask2, errbuf2) == -1) {
+		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev[2], errbuf2);
+		net2 = 0;
+		mask2 = 0;
+	}
+
+	/* Open the session in promiscuous mode */
+	handle2 = pcap_open_live(dev[2], BUFSIZ, 1, 1000, errbuf2);
+	if (handle2 == NULL) {
+		fprintf(stderr, "Couldn't open device %s: %s\n", dev[2], errbuf2);
+		return (void*)2;
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+
+	//-----------------------------------------------------------------------------------------------	
+	/* Find the properties for the device */
+	if (pcap_lookupnet(dev[3], &net3, &mask3, errbuf3) == -1) {
+		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev[3], errbuf3);
+		net3 = 0;
+		mask3 = 0;
+	}
+
+	/* Open the session in promiscuous mode */
+	handle3 = pcap_open_live(dev[3], BUFSIZ, 1, 1000, errbuf3);
+	if (handle3 == NULL) {
+		fprintf(stderr, "Couldn't open device %s: %s\n", dev[3], errbuf3);
+		return (void*)2;
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+
+	//-----------------------------------------------------------------------------------------------	
+	/* Find the properties for the device */
+	if (pcap_lookupnet(dev[4], &net4, &mask4, errbuf4) == -1) {
+		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev[4], errbuf4);
+		net4 = 0;
+		mask4 = 0;
+	}
+
+	/* Open the session in promiscuous mode */
+	handle4 = pcap_open_live(dev[4], BUFSIZ, 1, 1000, errbuf4);
+	if (handle4 == NULL) {
+		fprintf(stderr, "Couldn't open device %s: %s\n", dev[4], errbuf4);
+		return (void*)2;
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+	pthread_mutex_lock(&m);
+	/* Compile and apply the filter */
+	if (pcap_compile(handle1, &fp1, filter_exp, 0, net1) == -1) {
+		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle1));
+		return (void*)2;
+	}
+	if (pcap_setfilter(handle1, &fp1) == -1) {
+		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle1));
+		return (void*)2;
+	}
+
+	/* Compile and apply the filter */
+	if (pcap_compile(handle2, &fp2, filter_exp, 0, net2) == -1) {
+		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle2));
+		return (void*)2;
+	}
+	if (pcap_setfilter(handle2, &fp2) == -1) {
+		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle2));
+		return (void*)2;
+	}
+
+	/* Compile and apply the filter */
+	if (pcap_compile(handle3, &fp3, filter_exp, 0, net3) == -1) {
+		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle3));
+		return (void*)2;
+	}
+	if (pcap_setfilter(handle3, &fp3) == -1) {
+		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle3));
+		return (void*)2;
+	}
+
+	/* Compile and apply the filter */
+	if (pcap_compile(handle4, &fp4, filter_exp, 0, net4) == -1) {
+		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle4));
+		return (void*)2;
+	}
+	if (pcap_setfilter(handle4, &fp4) == -1) {
+		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle4));
+		return (void*)2;
+	}
+	pthread_mutex_unlock(&m);
+	while(1){
+		upst.direction=traffic_sig;
+		upst.state=updt;
+		printf("TRANSACTION ID:%d\n",Transaction);
+		printf("INJECTING SNAPSHOT UPDATE\n");
+		int result1 = pcap_inject(handle1,&upst,sizeof(state_t));
+		int result2 = pcap_inject(handle2,&upst,sizeof(state_t));
+		int result3 = pcap_inject(handle3,&upst,sizeof(state_t));
+		int result4 = pcap_inject(handle4,&upst,sizeof(state_t));
+		upst.direction='-';
+		upst.state=0;
+		pthread_mutex_lock(&m);
+		updt=0;
+		pthread_mutex_unlock(&m);
+		Transaction++;
+		usleep(2000000);
+	}			
+}
 
 
 int main(int argc, char *argv[]){
-	pthread_t thread1,thread2,thread3,thread4,traffic_t;
+	pthread_t thread1,thread2,thread3,thread4,traffic_t,send_update;
 	pthread_create(&thread1,NULL,sniffingthread,argv[1]);
 	pthread_create(&thread2,NULL,sniffingthread,argv[2]);
 	pthread_create(&thread3,NULL,sniffingthread,argv[3]);
 	pthread_create(&thread4,NULL,sniffingthread,argv[4]);
+	pthread_create(&send_update,NULL,send_update_thread,argv);
 	pthread_create(&traffic_t,NULL,trafficthread,NULL);
 	pthread_join(thread1,NULL);		
 	pthread_join(thread2,NULL);
