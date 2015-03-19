@@ -17,8 +17,7 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
-	struct state_t *st = (struct state_t *)(pac);
-	
+	struct state_t *st = (struct state_t *)(pac);	
 	if(st->direction=='S'){
 		pthread_mutex_lock(&m);
 		printf("GOT SOUTH UPDATE\n");
@@ -118,12 +117,8 @@ void* sniffingthread(void *args){
 		return (void*)2;
 	}
 	pthread_mutex_unlock(&m);
-		
-	while(1){
-		pcap_loop(handle,1,procpkt,NULL);
-		pthread_mutex_unlock(&m);
-	}		
-		pcap_close(handle);	
+	pcap_loop(handle,-1,procpkt,NULL);		
+	pcap_close(handle);	
 }
 
 void* send_update_thread(void *args){
@@ -251,7 +246,7 @@ void* send_update_thread(void *args){
 		upst.direction=traffic_sig;
 		upst.state=updt;
 		printf("TRANSACTION ID:%d\n",Transaction);
-		printf("INJECTING SNAPSHOT UPDATE\n");
+		printf("INJECTING SNAPSHOT UPDATE:%d\n",updt);
 		int result1 = pcap_inject(handle1,&upst,sizeof(state_t));
 		int result2 = pcap_inject(handle2,&upst,sizeof(state_t));
 		int result3 = pcap_inject(handle3,&upst,sizeof(state_t));
@@ -262,7 +257,7 @@ void* send_update_thread(void *args){
 		updt=0;
 		pthread_mutex_unlock(&m);
 		Transaction++;
-		usleep(2000000);
+		usleep(1000000);
 	}			
 }
 

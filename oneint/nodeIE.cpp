@@ -79,11 +79,11 @@ void Take_action(struct state_t *st){
 	state=state>>6;
 	state=state&63;
 	printf("STATE:%d\n",state);
-	printf("DIRECTION:%c\n",st->direction);
+	printf("TRAFFIC STATE:%c\n",st->direction);
 	if(st->direction=='A' || st->direction=='B'){
 		if(state&(1<<5)){
 			Q4.pop();
-			printf("Sevicing Q4\n");
+			printf("Servicing Q4\n");
 		}
 	}
 	else if(st->direction=='C'){
@@ -103,37 +103,37 @@ void Take_action(struct state_t *st){
 			}
 			if(state&(1<<4)){
 				Q5.pop();
-				printf("Sevicing Q5\n");
+				printf("Servicing Q5\n");
 
 			}
 			if(state&(1<<5)){
 				Q4.pop();
-				printf("Sevicing Q4\n");
+				printf("Servicing Q4\n");
 			}
 		}
 		else if(PS==1 || PS==2){
 			if(!(state&(1<<1))){
 				Q6.pop();
-				printf("Sevicing Q6\n");
+				printf("Servicing Q6\n");
 			}
 			if(state&(1<<4)){
 				Q5.pop();
-				printf("Sevicing Q5\n");
+				printf("Servicing Q5\n");
 			}
 			if(state&(1<<5)){
 				Q4.pop();
-				printf("Sevicing Q4\n");
+				printf("Servicing Q4\n");
 			}
 		}		
 	}
 	if(st->direction=='D'){
 		if(state&(1<<3)){
 			Q6.pop();
-			printf("Sevicing Q6\n");
+			printf("Servicing Q6\n");
 		}
 		if(state&(1<<5)){
 			Q4.pop();
-			printf("Sevicing Q4\n");
+			printf("Servicing Q4\n");
 		}
 	}
 }
@@ -182,9 +182,9 @@ void *send_update_thread(void *args){
 		if(!Q4.empty()){
 			st.state=st.state|4;
 		}
-		printf("INJECTING EAST UPDATE\n");	
+		printf("INJECTING EAST UPDATE:%d\n",st.state);	
 		int result = pcap_inject(handle,&st,sizeof(state_t));
-		usleep(2000000);
+		usleep(1000000);
 	}
 }
 
@@ -223,7 +223,7 @@ void *recv_update_thread(void *args){
 	pthread_mutex_unlock(&m);
 	while(1){
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
-		printf("GOT SNAPSHOT UPDATE FROM CONTROLLER\n");		
+		printf("GOT SNAPSHOT UPDATE FROM CONTROLLER:%d\n",st.state);		
 		Take_action(&st);
 		st.state=0;
 	}

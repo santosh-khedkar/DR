@@ -79,7 +79,7 @@ void Take_action(struct state_t *st){
 	state=state|st->state;
 	state=state&63;
 	printf("STATE:%d\n",state);
-	printf("DIRECTION:%c\n",st->direction);
+	printf("TRAFFIC STATE:%c\n",st->direction);
 	if(st->direction=='C' || st->direction=='D'){
 		if(state&(1<<5)){
 			Q1.pop();
@@ -181,9 +181,9 @@ void *send_update_thread(void *args){
 		if(!Q1.empty()){
 			st.state=st.state|4;
 		}
-		printf("INJECTING NORTH UPDATE\n");	
+		printf("INJECTING NORTH UPDATE:%d\n",st.state);	
 		int result = pcap_inject(handle,&st,sizeof(state_t));
-		usleep(2000000);
+		usleep(1000000);
 	}
 }
 
@@ -222,7 +222,7 @@ void *recv_update_thread(void *args){
 	pthread_mutex_unlock(&m);
 	while(1){
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
-		printf("GOT SNAPSHOT UPDATE FROM CONTROLLER\n");		
+		printf("GOT SNAPSHOT UPDATE FROM CONTROLLER:%d\n",st.state);		
 		Take_action(&st);
 		st.state=0;
 	}
