@@ -12,7 +12,7 @@ using namespace std;
 
 char traffic_sig='-';
 u_short updt=0; /*0000|Q4|Q5|Q6|Q12|Q11|Q10|Q1|Q2|Q3|Q9|Q8|Q7|*/
-
+FILE *fp = fopen("controller.txt","w");
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
@@ -20,26 +20,30 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 	struct state_t *st = (struct state_t *)(pac);	
 	if(st->direction=='S'){
 		pthread_mutex_lock(&m);
-		printf("GOT SOUTH UPDATE\n");
 		updt=updt|st->state;
+		fprintf(fp,"GOT SOUTH UPDATE:%d\n",updt);
+		fflush(fp);
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='N'){
 		pthread_mutex_lock(&m);
-		printf("GOT NORTH UPDATE\n");
 		updt=updt|(st->state<<3);
+		fprintf(fp,"GOT NORTH UPDATE:%d\n",updt);
+		fflush(fp);
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='W'){
 		pthread_mutex_lock(&m);
-		printf("GOT WEST UPDATE\n");
 		updt=updt|(st->state<<6);
+		fprintf(fp,"GOT WEST UPDATE:%d\n",updt);
+		fflush(fp);
 		pthread_mutex_unlock(&m);
 	}
 	else if(st->direction=='E'){
 		pthread_mutex_lock(&m);
-		printf("GOT EAST UPDATE\n");
 		updt=updt|(st->state<<9);
+		fprintf(fp,"GOT EAST UPDATE:%d\n",updt);
+		fflush(fp);
 		pthread_mutex_unlock(&m);
 	}
 	else{
@@ -245,8 +249,6 @@ void* send_update_thread(void *args){
 	while(1){
 		upst.direction=traffic_sig;
 		upst.state=updt;
-		printf("TRANSACTION ID:%d\n",Transaction);
-		printf("INJECTING SNAPSHOT UPDATE:%d\n",updt);
 		int result1 = pcap_inject(handle1,&upst,sizeof(state_t));
 		int result2 = pcap_inject(handle2,&upst,sizeof(state_t));
 		int result3 = pcap_inject(handle3,&upst,sizeof(state_t));
@@ -254,6 +256,10 @@ void* send_update_thread(void *args){
 		upst.direction='-';
 		upst.state=0;
 		pthread_mutex_lock(&m);
+		fprintf(fp,"TRANSACTION ID:%d\n",Transaction);
+		fflush(fp);
+		fprintf(fp,"INJECTING SNAPSHOT UPDATE:%d\n",updt);
+		fflush(fp);
 		updt=0;
 		pthread_mutex_unlock(&m);
 		Transaction++;

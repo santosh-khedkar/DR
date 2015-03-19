@@ -13,6 +13,8 @@ queue<packet*> Q10;
 queue<packet*> Q11;
 queue<packet*> Q12;
 
+FILE *fp = fopen("nodeIW.txt","w");
+
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
@@ -77,12 +79,15 @@ void Take_action(struct state_t *st){
 	state=state|st->state;
 	state=state>>6;
 	state=state&63;
-	printf("STATE:%d\n",state);
-	printf("TRAFFIC STATE:%c\n",st->direction);
+	fprintf(fp,"STATE:%d\n",state);
+	fflush(fp);
+	fprintf(fp,"TRAFFIC STATE:%c\n",st->direction);
+	fflush(fp);
 	if(st->direction=='A' || st->direction=='B'){
 		if(state&1){
 			Q10.pop();
-			printf("Servicing Q10\n");
+			fprintf(fp,"Servicing Q10\n");
+			fflush(fp);
 		}
 	}
 	else if(st->direction=='C'){
@@ -98,41 +103,48 @@ void Take_action(struct state_t *st){
 		if(PS==0 || PS==1){
 			if(state&1){
 				Q10.pop();
-				printf("Servicing Q10\n");
+				fprintf(fp,"Servicing Q10\n");
+				fflush(fp);				
 			}
 			if(state&(1<<1)){
 				Q11.pop();
-				printf("Servicing Q11\n");
+				fprintf(fp,"Servicing Q11\n");
+				fflush(fp);
 			}
 			if(state&(1<<2)){
 				Q12.pop();
-				printf("Servicing Q12\n");
-
+				fprintf(fp,"Servicing Q12\n");
+				fflush(fp);
 			}
 		}
 		else if(PS==3 || PS==2){
 			if(!(state&(1<<4))){
 				Q12.pop();
-				printf("Servicing Q12\n");
+				fprintf(fp,"Servicing Q12\n");
+				fflush(fp);
 			}
 			if(state&(1<<1)){
 				Q11.pop();
-				printf("Servicing Q11\n");
+				fprintf(fp,"Servicing Q11\n");
+				fflush(fp);
 			}
 			if(state&1){
 				Q10.pop();
-				printf("Servicing Q10\n");
+				fprintf(fp,"Servicing Q10\n");
+				fflush(fp);
 			}
 		}		
 	}
 	if(st->direction=='D'){
 		if(state&1){
 			Q10.pop();
-			printf("Servicing Q10\n");
+			fprintf(fp,"Servicing Q10\n");
+			fflush(fp);
 		}
 		if(state&(1<<2)){
 			Q12.pop();
-			printf("Servicing Q12\n");
+			fprintf(fp,"Servicing Q12\n");
+			fflush(fp);
 		}
 	}
 }
@@ -146,7 +158,7 @@ void *send_update_thread(void *args){
 	device = (char*)args;
 	bpf_u_int32 mask;		/* Our netmask */
 	bpf_u_int32 net;		/* Our IP */
-	struct bpf_program fp;		/* The compiled filter */
+	struct bpf_program fp1;		/* The compiled filter */
 		
 	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
@@ -160,11 +172,11 @@ void *send_update_thread(void *args){
 	}
 	pthread_mutex_lock(&m);
 	/* Compile and apply the filter */
-	if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+	if (pcap_compile(handle, &fp1, filter_exp, 0, net) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		return (void*)2;
 	}
-	if (pcap_setfilter(handle, &fp) == -1) {
+	if (pcap_setfilter(handle, &fp1) == -1) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		return (void*)2;
 	}
@@ -181,7 +193,10 @@ void *send_update_thread(void *args){
 		if(!Q12.empty()){
 			st.state=st.state|4;
 		}
-		printf("INJECTING WEST UPDATE:%d\n",st.state);	
+		pthread_mutex_lock(&m);
+		fprintf(fp,"INJECTING WEST UPDATE:%d\n",st.state);
+		fflush(fp);	
+		pthread_mutex_unlock(&m);
 		int result = pcap_inject(handle,&st,sizeof(state_t));
 		usleep(1000000);
 	}
@@ -196,7 +211,7 @@ void *recv_update_thread(void *args){
 	device = (char*)args;
 	bpf_u_int32 mask;		/* Our netmask */
 	bpf_u_int32 net;		/* Our IP */
-	struct bpf_program fp;		/* The compiled filter */
+	struct bpf_program fp1;		/* The compiled filter */
 		
 	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
@@ -210,19 +225,22 @@ void *recv_update_thread(void *args){
 	}
 	pthread_mutex_lock(&m);
 	/* Compile and apply the filter */
-	if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+	if (pcap_compile(handle, &fp1, filter_exp, 0, net) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		return (void*)2;
 	}
-	if (pcap_setfilter(handle, &fp) == -1) {
+	if (pcap_setfilter(handle, &fp1) == -1) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		return (void*)2;
 	}
 	pthread_mutex_unlock(&m);
 	while(1){
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
-		printf("GOT SNAPSHOT UPDATE FROM CONTROLLER:%d\n",st.state);		
+		pthread_mutex_lock(&m);
+		fprintf(fp,"GOT SNAPSHOT UPDATE FROM CONTROLLER:%d\n",st.state);	
+		fflush(fp);	
 		Take_action(&st);
+		pthread_mutex_unlock(&m);
 		st.state=0;
 	}
 }
