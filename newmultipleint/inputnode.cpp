@@ -12,7 +12,7 @@
 
 /*argv[1]=SID, argv[2]=direction, argv[3]=interface*/
 int main(int argc, char* argv[]){
-     
+    int result;
 	struct packet *pkt= (struct packet*)malloc(sizeof(struct packet));
 	pcap_t *handle = NULL;
 	int type;
@@ -36,9 +36,9 @@ int main(int argc, char* argv[]){
 		}
 		else if(type==1){
 			int halt = rand()%100000000;
-			int result = pcap_inject(handle, pkt,sizeof(struct packet));
 			usleep(halt);	
 		}	
+		result = pcap_inject(handle, pkt,sizeof(struct packet));
 			
 	}
 	return 0;
