@@ -12,11 +12,13 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 
+using namespace std;
+pcap_t *handle[2]; /* handles*/
+char dir1,dir2; /* dir1,dir2 correspond to what direction the common node is*/
+int SID; /* source ID*/
 
 
-pcap_t *handle[2];
-char dir1,dir2;
-int SID;
+/*packet_proc: forwards the packet from one interface to another */
 
 void packet_proc(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	pcap_t *handle_h = (pcap_t*)useless;
@@ -31,12 +33,14 @@ void packet_proc(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* 
 	}
 }
 
+/*Initial information setup*/
+
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
     pcap_t *handle_h = (pcap_t*)useless;
     u_char *pac = (u_char*)pack;
     struct packet *pkt = (struct packet *)(pac);
     if(pkt->direction == 'I'){
-    	pkt->direction = pkt->sub_direction;
+    	pkt->direction = pkt->sub_direction; /*set the direction*/
         pkt->Vehicle_ID = 0;   /*Vehicle ID*/
         pkt->sub_direction = '-';
         pkt->Lane = SID; /*Lane (Redundant)*/
@@ -52,10 +56,11 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
     }
 }
 
+/*forwarding thread*/
 void* forwarding_thread(void *args){
 	pcap_t * handle_h = (pcap_t *)args;
-	pcap_loop(handle_h,1,procpkt,(u_char*)handle_h);
-	pcap_loop(handle_h,-1,packet_proc,(u_char*)handle_h);
+	pcap_loop(handle_h,1,procpkt,(u_char*)handle_h); /*initial information*/
+	pcap_loop(handle_h,-1,packet_proc,(u_char*)handle_h); /* for packet forwarding*/
 }
 
 int main(int argc, const char * argv[]) {
@@ -69,9 +74,10 @@ int main(int argc, const char * argv[]) {
 	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	char errbuf[2][PCAP_ERRBUF_SIZE];	/* Error string */
 
- 	dir1 = argv[1][0];
- 	dir2 = argv[2][0];
- 	SID = atoi(argv[3]);
+ 	dir1 = argv[1][0]; /* common node direction*/
+ 	dir2 = argv[2][0]; /*common node direction*/
+ 	SID = atoi(argv[3]); /* Source ID*/
+
     if (getifaddrs(&ifaddr) == -1) {
         perror("getifaddrs");
         exit(EXIT_FAILURE);

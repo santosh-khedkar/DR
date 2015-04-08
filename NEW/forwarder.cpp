@@ -13,14 +13,17 @@
 
 using namespace std;
 
+/*direction handles*/
 pcap_t *North_h,*South_h,*West_h,*East_h;
 FILE *fplog;
 
+/*initial information processing*/
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
     pcap_t *handle = (pcap_t *)useless;
     u_char *pac = (u_char*)pack;
     struct packet *pkt = (struct packet *)(pac);
     if(pkt->direction == 'I'){
+        /*get direction specific handles*/
         if(pkt->sub_direction == 'N'){
             North_h = handle;
         }
@@ -49,59 +52,74 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
     }
 }
 
+/*packet forwarding*/
 void fwd_pkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
     u_char *pac = (u_char*)pack;
     struct packet *pkt = (struct packet *)(pac);
     int result;
     if(pkt->direction == 'N'){
+        /*N-1 -> West*/
         if(pkt->SID == 1){
             result = pcap_inject(West_h, pkt,sizeof(struct packet));
         }
+        /*N-2 -> South*/
         else if(pkt->SID == 2){
             result = pcap_inject(South_h, pkt,sizeof(struct packet));
         }
+        /*N-3 -> East*/
         else if(pkt->SID == 3){
             result = pcap_inject(East_h, pkt,sizeof(struct packet));
         }
     }
     else if(pkt->direction == 'E'){
+        /*E-1 -> North*/
         if(pkt->SID == 1){
             result = pcap_inject(North_h, pkt,sizeof(struct packet));
         }
+        /*E-2 -> West*/
         else if(pkt->SID == 2){
             result = pcap_inject(West_h, pkt,sizeof(struct packet));
         }
+        /*E-3 -> South*/
         else if(pkt->SID == 3){
             result = pcap_inject(South_h, pkt,sizeof(struct packet));
         }
     }
     else if(pkt->direction == 'S'){
+        /*S-1 -> West*/
         if(pkt->SID == 1){
             result = pcap_inject(West_h, pkt,sizeof(struct packet));
         }
+        /*S-2 -> North*/
         else if(pkt->SID == 2){
             result = pcap_inject(North_h, pkt,sizeof(struct packet));
         }
+        /*S-3 -> East*/ 
         else if(pkt->SID == 3){
             result = pcap_inject(East_h, pkt,sizeof(struct packet));
         }
     }
     else if(pkt->direction == 'W'){
+        /*W-1 -> North*/
         if(pkt->SID == 1){
             result = pcap_inject(North_h, pkt,sizeof(struct packet));
         }
+        /*W-2 -> East*/
         else if(pkt->SID == 2){
             result = pcap_inject(East_h, pkt,sizeof(struct packet));
         }
+        /*W-3 -> South*/
         else if(pkt->SID == 3){
             result = pcap_inject(South_h, pkt,sizeof(struct packet));
         }
     }
 }
+
+/*forward thread*/
 void* forward_thread(void *args){
     pcap_t* handle = (pcap_t*)args;
-    pcap_loop(handle,1,procpkt,(u_char*)handle);
-    pcap_loop(handle,-1,fwd_pkt,NULL);
+    pcap_loop(handle,1,procpkt,(u_char*)handle); /*initial information setup*/
+    pcap_loop(handle,-1,fwd_pkt,NULL); /* loop for the packet to forward*/
 }
 
 int main(int argc, const char * argv[]) {

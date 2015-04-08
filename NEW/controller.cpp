@@ -13,12 +13,12 @@
 	
 using namespace std;
    
-char traffic_sig = '-';
+char traffic_sig = '-'; /*Traffic state (A/B/C/D) */
 u_short updt = 0; /*0000|Q4|Q5|Q6|Q12|Q11|Q10|Q1|Q2|Q3|Q9|Q8|Q7|*/
-FILE *fplog;
+FILE *fplog;  /* log file*/
 FILE *fplog1 = fopen("traffic_sig.txt","w");
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-char allDevNames[4][5];
+char allDevNames[4][5];  /*List of all interfaces*/
 
 
 /*Returns the number of vehicles passing through the intersection*/
@@ -123,6 +123,8 @@ int get_no_veh_serviced(u_short update){
 }
 
 
+/*procpkt: To send the initial information packet*/
+
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	pcap_t *handle = (pcap_t *)useless;
     u_char *pac = (u_char*)pack;
@@ -143,6 +145,7 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
         exit(1);
     }
 }
+/*Snapshot: Calculates the current state of the instersection and broadcasts it across*/
 
 void snapshot(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
@@ -150,28 +153,28 @@ void snapshot(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pac
 	/*Processing South Update*/
 	if(st->direction == 'S'){
 		pthread_mutex_lock(&m);
-		updt = updt & 65528;
+		updt = updt & 65528; /*flushing the bits corresponding to south update */
 		updt = updt | st->state;
 		pthread_mutex_unlock(&m);
 	}
 	/*Processing North Update*/
 	else if(st->direction == 'N'){
 		pthread_mutex_lock(&m);
-		updt = updt & 65479;
+		updt = updt & 65479;	/*flushing the bits corresponding to North update */
 		updt = updt | (st->state<<3);
 		pthread_mutex_unlock(&m);
 	}
 	/*Processing West Update*/
 	else if(st->direction == 'W'){
 		pthread_mutex_lock(&m);
-		updt = updt & 65087;
+		updt = updt & 65087;		/*flushing the bits corresponding to West update */
 		updt = updt | (st->state<<6);
 		pthread_mutex_unlock(&m);
 	}
 	/*Processing East Update*/
 	else if(st->direction == 'E'){
 		pthread_mutex_lock(&m);
-		updt = updt & 61951;
+		updt = updt & 61951;		/*flushing the bits corresponding to East update */
 		updt = updt | (st->state<<9);
 		pthread_mutex_unlock(&m);
 	}
@@ -197,7 +200,7 @@ void* send_update_thread(void *args){
 		int result = pcap_inject(handle,&upst,sizeof(state_t));
 		fprintf(fplog,"%d\n",num_of_veh);
 		fflush(fplog);
-		fprintf(fplog1,"%d\n",(int)upst.direction-65);
+		fprintf(fplog1,"%d\n",(int)upst.direction-65); /*0-A, 1-B, 2-C, 4-D*/
 		fflush(fplog1);
 		upst.direction = '-';
 		upst.state = 0;
@@ -210,9 +213,9 @@ void* send_update_thread(void *args){
 void* update_sniffing_thread(void *args){
 	pthread_t send_update;
 	pcap_t *handle = (pcap_t *)args;
-	pcap_loop(handle,1,procpkt,(u_char*)handle);		
-	pthread_create(&send_update,NULL,send_update_thread,handle);
-	pcap_loop(handle,-1,snapshot,NULL);
+	pcap_loop(handle,1,procpkt,(u_char*)handle);	/*intial information packet*/	
+	pthread_create(&send_update,NULL,send_update_thread,handle); /* create a update sending thread*/
+	pcap_loop(handle,-1,snapshot,NULL);  /* receivers thread keeps sniffing for new snapshots*/
 }
 
 /*Traffic Signal thread*/
@@ -223,22 +226,22 @@ void* trafficthread(void *args){
 		switch(count){
 			case 0: 
 				traffic_sig='A';
-				usleep(25000000);
+				usleep(25000000); 	/*sleep for 25s*/
 				count++;
 				break;
 			case 1:
 				traffic_sig='B';
-				usleep(5000000);
+				usleep(5000000); 	/*sleep for 5s*/
 				count++;
 				break;
 			case 2: 
 				traffic_sig='C';
-				usleep(25000000);
+				usleep(25000000);	/*sleep for 25s*/
 				count++;
 				break;
 			case 3: 
 				traffic_sig='D';
-				usleep(5000000);
+				usleep(5000000);	/*sleep for 5s*/
 				count=0;
 				break;
 			default:
@@ -248,6 +251,8 @@ void* trafficthread(void *args){
 	}
 }
 
+/*Update receiving thread*/
+
 void* recv_update_thread(void *args){
 	pthread_t thread[4]; 		/*Thread ID*/
 	pcap_t *handle[4];			/* Session handle */
@@ -256,6 +261,8 @@ void* recv_update_thread(void *args){
 	struct bpf_program fp[4];		/* The compiled filter */
 	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
 	char errbuf[4][PCAP_ERRBUF_SIZE];	/* Error string */
+
+
 	/* Open Handle for the devices */
 	for(int i = 0 ; i<4; i++){
 		if (pcap_lookupnet(allDevNames[i], &net[i], &mask[i], errbuf[i]) == -1) {
@@ -327,7 +334,7 @@ int main(int argc, const char * argv[]) {
     //free linked list
     freeifaddrs(ifaddr);
 
-    fplog = fopen(argv[1],"w");
+    fplog = fopen(argv[1],"w");  /*log file*/
 	pthread_t traffic_t, recv_update;
 	/*Traffic thread*/
 	pthread_create(&traffic_t,NULL,trafficthread,NULL);
