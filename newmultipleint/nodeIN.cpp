@@ -333,8 +333,8 @@ void *recv_update_thread(void *args){
 	while(1){
 		pcap_loop(handle,1,updatestate,(u_char*)&st);
 		pthread_mutex_lock(&m);
-		fprintf(fp,"GOT SNAPSHOT UPDATE FROM CONTROLLER:%d\n",st.state);	
-		fflush(fp);	
+		/*fprintf(fp,"GOT SNAPSHOT UPDATE FROM CONTROLLER:%d\n",st.state);	
+		fflush(fp);	*/
 		Take_action(&st);
 		pthread_mutex_unlock(&m);st.state=0;
 	}
@@ -342,7 +342,9 @@ void *recv_update_thread(void *args){
 
 int main(int argc, char *argv[]){
 	pthread_t thread1,thread2,thread3,send_update,recv_update,recvfwd_t;
-	fp = fopen(argv[1],"w");
+	int_node=atoi(argv[1]);
+	fwd_int=atoi(argv[2]);
+	fp = fopen(argv[3],"w");
 	char errbuf1[PCAP_ERRBUF_SIZE], *device1;
 	device1=(char*)argv[7];
 	char errbuf2[PCAP_ERRBUF_SIZE], *device2;
@@ -368,8 +370,7 @@ int main(int argc, char *argv[]){
   		fprintf(stderr, "ERRO: %s\n", errbuf4);
   		exit(1);
 	}
-	int_node=atoi(argv[1]);
-	fwd_int=atoi(argv[2]);
+
 	pthread_create(&thread1,NULL,sniffingthread,argv[4]);
 	pthread_create(&thread2,NULL,sniffingthread,argv[5]);
 	pthread_create(&thread3,NULL,sniffingthread,argv[6]);

@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
 	device=(char*)argv[4];
 
 	if ((handle = pcap_open_live(device, BUFSIZ, 1, 0, errbuf)) == NULL) {
-  		fprintf(stderr, "ERRO: %s\n", errbuf);
+  		fprintf(stderr, "ERROR: %s\n", errbuf);
   		exit(1);
 	}
 	pkt->Vehicle_ID=1;
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
 	while(1){
 		pkt->Vehicle_ID++;
 		if(type==0){
-			usleep(25000000);
+			usleep(15000000);
 		}
 		else if(type==1){
 			int halt = rand()%100000000;

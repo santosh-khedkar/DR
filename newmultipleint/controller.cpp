@@ -128,7 +128,7 @@ void* sniffingthread(void *args){
 
 void* send_update_thread(void *args){
 	struct state_t upst;
-	struct timeval start;
+	struct timeval start,end;
 	const u_char *pack;
 	u_int Transaction=1;
 	pcap_t *handle1,*handle2,*handle3,*handle4;			/* Session handle */
@@ -248,6 +248,7 @@ void* send_update_thread(void *args){
 		return (void*)2;
 	}
 	pthread_mutex_unlock(&m);
+	gettimeofday(&start,NULL);
 	while(1){
 		upst.direction=traffic_sig;
 		upst.state=updt;
@@ -262,8 +263,8 @@ void* send_update_thread(void *args){
 		fflush(fp);
 		fprintf(fp,"INJECTING SNAPSHOT UPDATE:%d\n",updt);
 		fflush(fp);
-		gettimeofday(&start,NULL);
-		fprintf(fplog,"%ld: INJECTING SNAPSHOT UPDATE:%d, SIGNAL:%c\n",(start.tv_sec * 1000000 + start.tv_usec),updt,traffic_sig);
+		gettimeofday(&end,NULL);
+		fprintf(fplog,"%ld: INJECTING SNAPSHOT UPDATE:%d, SIGNAL:%c\n",((end.tv_sec  + end.tv_usec/1000000)-(start.tv_sec  + start.tv_usec/1000000)),updt,traffic_sig);
 		fflush(fplog);
 		updt=0;
 		pthread_mutex_unlock(&m);

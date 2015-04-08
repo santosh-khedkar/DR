@@ -14,13 +14,12 @@ FILE *fp;
 int result;
 pcap_t *handle1,*handle2,*handle3,*handle4;	/*1-N,2-E,3-S,4-S	/* Session handle */
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
 void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack){
 	u_char *pac = (u_char*)pack;
 	struct packet *pkt = (struct packet *)(pac);
 	
 	pthread_mutex_lock(&m);
-	fprintf(fp,"Forwarding Packet from %c direction,SID:%d, VID:,%d\n",pkt->direction,pkt->SID,pkt->Vehicle_ID);
-	fflush(fp);
 	if(pkt->direction=='N'){
 		if(pkt->SID==1){
 			result = pcap_inject(handle4, pkt,sizeof(struct packet));
@@ -67,7 +66,10 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 	}
 	else{
 		printf("FAULTY PACKET!!!\n");
+		return;
 	}
+	fprintf(fp,"Forwarding Packet from %c direction,SID:%d, VID:,%d\n",pkt->direction,pkt->SID,pkt->Vehicle_ID);
+	fflush(fp);
 	pthread_mutex_unlock(&m);
 }
 
