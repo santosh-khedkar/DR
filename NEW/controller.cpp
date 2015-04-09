@@ -24,7 +24,6 @@ char allDevNames[4][5];  /*List of all interfaces*/
 /*Returns the number of vehicles passing through the intersection*/
 
 int get_no_veh_serviced(u_short update){
-	u_short state = 0;
 	int count = 0;
 
 	if(traffic_sig == 'A'){
@@ -89,13 +88,13 @@ int get_no_veh_serviced(u_short update){
 		if(update & (1<<10)){  /*check if Q5 bit is set*/
 			count++;
 		}
-		else if(update & (1<<8)){	/*check if Q9 bit is set*/
+		else if(update & (1<<8)){	/*check if Q12 bit is set*/
 			count++;
 		}
-		if(update & (1<<7)){  /*check if Q8 bit is set*/
+		if(update & (1<<7)){  /*check if Q11 bit is set*/
 			count++;
 		}
-		else if(update & (1<<9)){	/*check if Q3 bit is set*/
+		else if(update & (1<<9)){	/*check if Q6 bit is set*/
 			count++;
 		}
 	}
@@ -198,9 +197,9 @@ void* send_update_thread(void *args){
 		num_of_veh= get_no_veh_serviced(upst.state); /* num of vehicals serviced based on taffic signal state*/
 		/* Injecting update in all directions*/
 		int result = pcap_inject(handle,&upst,sizeof(state_t));
-		fprintf(fplog,"%d\n",num_of_veh);
+		fprintf(fplog,"%d ",num_of_veh);
 		fflush(fplog);
-		fprintf(fplog1,"%d\n",(int)upst.direction-65); /*0-A, 1-B, 2-C, 4-D*/
+		fprintf(fplog1,"%d ",(int)upst.direction-65); /*0-A, 1-B, 2-C, 4-D*/
 		fflush(fplog1);
 		upst.direction = '-';
 		upst.state = 0;
@@ -226,21 +225,25 @@ void* trafficthread(void *args){
 		switch(count){
 			case 0: 
 				traffic_sig='A';
+				printf("A\n");
 				usleep(25000000); 	/*sleep for 25s*/
 				count++;
 				break;
 			case 1:
 				traffic_sig='B';
+				printf("B\n");
 				usleep(5000000); 	/*sleep for 5s*/
 				count++;
 				break;
 			case 2: 
 				traffic_sig='C';
 				usleep(25000000);	/*sleep for 25s*/
+				printf("C\n");
 				count++;
 				break;
 			case 3: 
 				traffic_sig='D';
+				printf("D\n");
 				usleep(5000000);	/*sleep for 5s*/
 				count=0;
 				break;

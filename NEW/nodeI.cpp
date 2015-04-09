@@ -15,6 +15,7 @@ using namespace std;
 
 char dir; /* direction of the I-node*/
 FILE *fplog; /*log file */
+FILE *fplog1;
 int fwd_int = 0; /*NESW*/ 
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 char allDevNames[5][5]; /*interface names*/
@@ -24,6 +25,145 @@ pcap_t *input_h[3],*Fwd_h,*Contrl_h; /*session handles*/
 queue<packet*> Q1;
 queue<packet*> Q2;
 queue<packet*> Q3;
+
+int get_no_veh_serviced(u_short update, char signal_t){
+    int count = 0;
+    int count_N = 0,count_S = 0,count_W = 0,count_E = 0;
+    if(signal_t == 'A'){
+        if(update & (1<<11)){    /*check if Q4 bit is set*/
+            count++;
+            count_E++;
+        }
+        if(update & (1<<6)){  /*check if Q10 bit is set*/
+            count++;
+            count_W++;
+        }
+        if(update & (1)){  /*check if Q7 bit is set*/
+            count++;
+            count_S++;
+        }
+        if(update & (1<<5)){  /*check if Q1 bit is set*/
+            count++;
+            count_N++;
+        }
+        if(update & (1<<4)){  /*check if Q2 bit is set*/
+            count++;
+            count_N++;
+        }
+        else if(update & (1<<2)){   /*check if Q9 bit is set*/
+            count++;
+            count_S++;
+        }
+        if(update & (1<<1)){  /*check if Q8 bit is set*/
+            count++;
+            count_S++;
+        }
+        else if(update & (1<<3)){   /*check if Q3 bit is set*/
+            count++;
+            count_N++;
+        }
+    }
+    else if(signal_t =='B'){
+        if(update & (1<<11)){ /*check if Q4 bit is set*/
+            count++;
+            count_E++;
+        }
+        if(update & (1<<6)){    /*check if Q10 bit is set*/
+            count++;
+            count_W++;
+        }
+        if(update & (1)){   /*check if Q7 bit is set*/
+            count++;
+            count_S++;
+        }
+        if(update & (1<<2)){    /*check if Q9 bit is set*/
+            count++;
+            count_S++;
+        }
+        if(update & (1<<3)){    /*check if Q3 bit is set*/
+            count++;
+            count_N++;
+        }
+        if(update & (1<<5)){    /*check if Q1 bit is set*/
+            count++;
+            count_N++;
+        }
+    }
+    else if(signal_t == 'C'){
+        if(update & (1)){       /*check if Q7 bit is set*/
+            count++;
+            count_S++;
+        }
+        if(update & (1<<5)){    /*check if Q1 bit is set*/
+            count++;
+            count_N++;
+        }
+        if(update & (1<<11)){  /*check if Q4 bit is set*/
+            count++;
+            count_E++;
+        }
+        if(update & (1<<6)){  /*check if Q10 bit is set*/
+            count++;
+            count_W++;
+        }
+        if(update & (1<<10)){  /*check if Q5 bit is set*/
+            count++;
+            count_E++;
+        }
+        else if(update & (1<<8)){   /*check if Q12 bit is set*/
+            count++;
+            count_W++;
+        }
+        if(update & (1<<7)){  /*check if Q11 bit is set*/
+            count++;
+            count_W++;
+        }
+        else if(update & (1<<9)){   /*check if Q6 bit is set*/
+            count++;
+            count_E++;
+        }
+    }
+    else if(signal_t =='D'){      
+        if(update & (1)){       /*check if Q7 bit is set*/
+            count++;
+            count_S++;
+        }
+        if(update & (1<<5)){    /*check if Q1 bit is set*/
+            count++;
+            count_N++;
+        }
+        if(update & (1<<6)){    /*check if Q10 bit is set*/
+            count++;
+            count_W++;
+        }
+        if(update & (1<<8)){    /*check if Q12 bit is set*/
+            count++;
+            count_W++;
+        }
+        if(update & (1<<9)){    /*check if Q6 bit is set*/
+            count++;
+            count_E++;
+        }
+        if(update & (1<<11)){   /*check if Q4 bit is set*/
+            count++;
+            count_E++;
+        }
+    }
+    if(dir == 'N'){
+        return count_N;
+    }
+    else if(dir == 'E'){
+        return count_E;
+    }
+    else if(dir == 'S'){
+        return count_S;
+    }
+    else if(dir == 'W'){
+        return count_W;
+    }
+}
+
+
 
 /*Update sending thread*/
 
@@ -96,6 +236,11 @@ void Take_action(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* 
 	u_char *pac = (u_char*)pack;
     struct state_t *st = (struct state_t *)(pac);
     struct packet *pkt;
+    int num_of_veh = get_no_veh_serviced(st->state,st->direction);
+    fprintf(fplog,"%d ",num_of_veh);
+    fflush(fplog);
+    fprintf(fplog1,"%d ",(int)st->direction-65); /*0-A, 1-B, 2-C, 4-D*/
+    fflush(fplog1);
     u_short state = 0;
     int result;
     /*If north or South I-node*/
@@ -511,7 +656,7 @@ int main(int argc, const char * argv[]) {
 	fwd_int =atoi(argv[2]);  /*0000NESW*/
 	dir = argv[1][0];  /*direction of the I-node*/
 	fplog = fopen(argv[3],"w"); /*log file*/
-    
+    fplog1 = fopen(argv[4],"w");
     if (getifaddrs(&ifaddr) == -1) {
         perror("getifaddrs");
         exit(EXIT_FAILURE);
