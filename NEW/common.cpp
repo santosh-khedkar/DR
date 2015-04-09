@@ -71,7 +71,7 @@ int main(int argc, const char * argv[]) {
 	bpf_u_int32 mask[2];		/* Our netmask */
 	bpf_u_int32 net[2];		/* Our IP */
 	struct bpf_program fp[2];		/* The compiled filter */
-	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
+	char filter_exp[]="(ether proto !(0x88cc) and !(stp))"; 	/* The filter expression */
 	char errbuf[2][PCAP_ERRBUF_SIZE];	/* Error string */
 
  	dir1 = argv[1][0]; /* common node direction*/

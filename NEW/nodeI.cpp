@@ -651,7 +651,7 @@ int main(int argc, const char * argv[]) {
 	bpf_u_int32 mask[4];		/* Our netmask */
 	bpf_u_int32 net[4];		/* Our IP */
 	struct bpf_program fp[4];		/* The compiled filter */
-	char filter_exp[]="!(ether proto 0x88cc)"; 	/* The filter expression */
+	char filter_exp[]="(ether proto !(0x88cc) and !(stp))"; 	/* The filter expression */
 	char errbuf[4][PCAP_ERRBUF_SIZE];	/* Error string */
 	fwd_int =atoi(argv[2]);  /*0000NESW*/
 	dir = argv[1][0];  /*direction of the I-node*/

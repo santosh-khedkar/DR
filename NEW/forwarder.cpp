@@ -126,7 +126,7 @@ int main(int argc, const char * argv[]) {
     struct ifaddrs *ifaddr, *ifa;
     int family, s, n,result, type, devNumber = 0;
     char allDevNames[4][5];
-    char host[NI_MAXHOST],filter_exp[]="!(ether proto 0x88cc)";
+    char host[NI_MAXHOST],filter_exp[]="(ether proto !(0x88cc) and !(stp))";
     pthread_t thread[4];        /*Thread ID*/
     pcap_t *handle[4];          /* Session handle */
     bpf_u_int32 mask[4];        /* Our netmask */

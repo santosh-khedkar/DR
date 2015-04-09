@@ -40,7 +40,7 @@ void procpkt(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* pack
 int main(int argc, const char * argv[]) {
     struct ifaddrs *ifaddr, *ifa;
     int family, s, n,result, type;
-    char host[NI_MAXHOST],interface[4],errbuf[PCAP_ERRBUF_SIZE],filter_exp[]="!(ether proto 0x88cc)";
+    char host[NI_MAXHOST],interface[4],errbuf[PCAP_ERRBUF_SIZE],filter_exp[]="(ether proto !(0x88cc) and !(stp))";
     struct packet *pkt= (struct packet*)malloc(sizeof(struct packet));
 	struct bpf_program fp;
     bpf_u_int32 mask,net;
