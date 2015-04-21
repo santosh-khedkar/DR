@@ -18,6 +18,9 @@ using namespace std;
 queue<car*> Q[12];
 
 
+/*Bit Vector for kill state */
+u_short kill_state = 0 ; /*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
+
 char traffic_sig = '-'; 		/*Traffic state (A/B/C/D) */
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 int dist_type;
@@ -82,12 +85,12 @@ void* queue_size_thread(void *args){
 void* input_thread(void *args){
 	int *i = (int*)args;
 	int lane = *i + 1;
-	/*pthread_mutex_lock(&m);
-	cout<<lane<<endl;
-	pthread_mutex_unlock(&m);
-	pthread_exit(NULL);*/
 	unsigned int Vehicle_id = 0;
 	while(1){
+		if(kill_state & (1<<(lane-1))){
+			cout<<"killing thread "<<lane<<endl;
+			pthread_exit(NULL);
+		}
 		struct car* vehicle = (struct car*)malloc(sizeof(struct car));
 		Vehicle_id++;
 		vehicle->SID = lane;
@@ -190,12 +193,13 @@ void* service_thread(void *args){
 
 int main(int argc, const char * argv[]) {
 	dist_type = atoi(argv[1]);
+	int option;
 	pthread_t traffic_t,Qsize_t,service_t;
 	pthread_t input_t[12];  /*Input threads for 12 queues*/
 	/*Traffic thread*/
 	pthread_create(&traffic_t,NULL,traffic_thread,NULL);
 	/*Queue Size thread*/
-	pthread_create(&Qsize_t,NULL,queue_size_thread,NULL);
+	//pthread_create(&Qsize_t,NULL,queue_size_thread,NULL);
 	/*Service threads*/
 	pthread_create(&service_t,NULL,service_thread,NULL);
 	/*Input threads*/
@@ -203,9 +207,20 @@ int main(int argc, const char * argv[]) {
 		pthread_create(&input_t[i],NULL,input_thread,(void*)&i);
 		usleep(100000);
 	}
-	for(int i = 0; i < 12;i++){
-    	pthread_join(input_t[i],NULL);
-    }
+	while(kill_state != 4095){
+		do{
+			cout<<"Enter the thread u want to kill (1-12)"<<endl;
+			cin>>option;
+			if((kill_state & (1<<(option-1))) == 0){
+				kill_state = kill_state | (1<<(option-1));
+				pthread_join(input_t[option-1],NULL);
+			}
+			else{
+				cout<<"Thread already killed"<<endl;
+				exit(0);
+			}
+		}while(option>0 && option<13);
+	}
 	return 0;
 }
 
