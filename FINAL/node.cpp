@@ -208,18 +208,23 @@ int main(int argc, const char * argv[]) {
 		usleep(100000);
 	}
 	while(kill_state != 4095){
-		do{
-			cout<<"Enter the thread u want to kill (1-12)"<<endl;
-			cin>>option;
+		cout<<"Enter the thread u want to kill (1-12)"<<endl;
+		cin>>option;
+		if(option>0 && option<13){
 			if((kill_state & (1<<(option-1))) == 0){
 				kill_state = kill_state | (1<<(option-1));
+				cout<<"kill_state:"<<kill_state<<endl;
 				pthread_join(input_t[option-1],NULL);
 			}
 			else{
 				cout<<"Thread already killed"<<endl;
 				exit(0);
 			}
-		}while(option>0 && option<13);
+		}
+		else{
+			cout<<"WRONG OPTION"<<endl;
+			exit(0);
+		}
 	}
 	return 0;
 }
