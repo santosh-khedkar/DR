@@ -13,13 +13,19 @@
 #include <signal.h>
 
 using namespace std;
+FILE *TRAF_log = fopen("traffic.txt","w"); 		/*Traffic log*/
+FILE *NOCS_log = fopen("throughput.txt","w");   /*No. of Cars Serviced*/
+FILE *NOCSN_log = fopen("throughputN.txt","w");   /*No. of Cars Serviced in North direction*/
+FILE *NOCSE_log = fopen("throughputE.txt","w");   /*No. of Cars Serviced in East direction*/
+FILE *NOCSS_log = fopen("throughputS.txt","w");   /*No. of Cars Serviced in South direction*/
+FILE *NOCSW_log = fopen("throughputW.txt","w");   /*No. of Cars Serviced in West direction*/
 
 /*Input queues*/
 queue<car*> Q[12];
 
-
 /*Bit Vector for kill state */
 u_short kill_state = 0 ; /*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
+u_short queue_state = 0 ; /*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
 
 char traffic_sig = '-'; 		/*Traffic state (A/B/C/D) */
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
@@ -33,25 +39,25 @@ void* traffic_thread(void *args){
 		switch(count){
 			case 0: 
 				traffic_sig='A'; 		/*N-S Green*/
-				printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+				//printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
 				usleep(25000000); 		/*sleep for 25s*/
 				count++;
 				break;
 			case 1:
 				traffic_sig='B';		/*N-S Yellow*/
-				printf("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n");
+				//printf("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n");
 				usleep(5000000); 		/*sleep for 5s*/
 				count++;
 				break;
 			case 2: 
 				traffic_sig='C';		/*E-W Green*/
-				printf("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\n");
+				//printf("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\n");
 				usleep(25000000);		/*sleep for 25s*/
 				count++;
 				break;
 			case 3: 
 				traffic_sig='D';		/*E-W Yellow*/
-				printf("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n");
+				//printf("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n");
 				usleep(5000000);		/*sleep for 5s*/
 				count=0;
 				break;
@@ -62,6 +68,15 @@ void* traffic_thread(void *args){
 	}
 }
 
+bool check_set_bit(int pos){
+	if(queue_state & 1<<pos){
+		return true;
+	}
+	else{
+		return false;
+	} 
+
+}
 /*Queue size thread*/
 void* queue_size_thread(void *args){
     while(1){
@@ -126,65 +141,125 @@ void* input_thread(void *args){
 }
 
 void* service_thread(void *args){
+	int count,countN,countE,countS,countW;
 	while(1){
+		count = countN = countE = countS = countW = 0;
 		/*Turn lanes always get serviced*/
-		usleep(1000000);
-		if(!Q[2].empty()){
+		usleep(2000000);
+		if(!Q[2].empty() && !check_set_bit(2)){
 			Q[2].pop();
+			count++;
+			countN++;
 		}
-		if(!Q[11].empty()){
+		if(!Q[11].empty() && !check_set_bit(11)){
 			Q[11].pop();
+			count++;
+			countW++;
 		}
-		if(!Q[8].empty()){
+		if(!Q[8].empty() && !check_set_bit(8)){
 			Q[8].pop();
+			count++;
+			countS++;
 		}
-		if(!Q[5].empty()){
+		if(!Q[5].empty() && !check_set_bit(5)){
 			Q[5].pop();
+			count++;
+			countE++;
 		}
 		if(traffic_sig == 'A'){
-			if(!Q[1].empty()){
+			if(!Q[1].empty() && !check_set_bit(1)){
 				Q[1].pop();
+				count++;
+				countN++;
 			}
-			else if(!Q[6].empty()){
+			else if(!Q[6].empty() && !check_set_bit(6)){
 				Q[6].pop();
+				count++;
+				countS++;
 			}
-			if(!Q[7].empty()){
+			if(!Q[7].empty() && !check_set_bit(7)){
 				Q[7].pop();
+				count++;
+				countS++;
 			}
-			else if(!Q[0].empty()){
+			else if(!Q[0].empty() && !check_set_bit(0)){
 				Q[0].pop();
+				count++;
+				countN++;
 			}
 		}
 		else if(traffic_sig == 'B'){
-			if(!Q[6].empty()){
+			if(!Q[6].empty() && !check_set_bit(6)){
 				Q[6].pop();
+				count++;
+				countS++;
 			}
-			if(!Q[0].empty()){
+			if(!Q[0].empty() && !check_set_bit(0)){
 				Q[0].pop();
+				count++;
+				countN++;
 			}
 		}
 		if(traffic_sig == 'C'){
-			if(!Q[4].empty()){
+			if(!Q[4].empty() && !check_set_bit(4)){
 				Q[4].pop();
+				count++;
+				countE++;
 			}
-			else if(!Q[9].empty()){
+			else if(!Q[9].empty() && !check_set_bit(9)){
 				Q[9].pop();
+				count++;
+				countW++;
 			}
-			if(!Q[10].empty()){
+			if(!Q[10].empty() && !check_set_bit(10)){
 				Q[10].pop();
+				count++;
+				countW++;
 			}
-			else if(!Q[3].empty()){
+			else if(!Q[3].empty() && !check_set_bit(3)){
 				Q[3].pop();
+				count++;
+				countE++;
 			}
 		}
 		else if(traffic_sig == 'D'){
-			if(!Q[9].empty()){
+			if(!Q[9].empty() && !check_set_bit(9)){
 				Q[9].pop();
+				count++;
+				countW++;
 			}
-			if(!Q[3].empty()){
+			if(!Q[3].empty() && !check_set_bit(3)){
 				Q[3].pop();
+				count++;
+				countE++;
 			}
 		}
+		if(traffic_sig == 'A'){
+			fprintf(TRAF_log,"0 ");
+			fflush(TRAF_log);
+		}
+		else if(traffic_sig == 'B'){
+			fprintf(TRAF_log,"1 ");
+			fflush(TRAF_log);
+		}
+		else if(traffic_sig == 'C'){
+			fprintf(TRAF_log,"2 ");
+			fflush(TRAF_log);
+		}
+		else if(traffic_sig == 'D'){
+			fprintf(TRAF_log,"3 ");
+			fflush(TRAF_log);
+		}
+		fprintf(NOCS_log,"%d ",count);
+		fflush(NOCS_log);
+		fprintf(NOCSN_log,"%d ",countN);
+		fflush(NOCSN_log);
+		fprintf(NOCSE_log,"%d ",countE);
+		fflush(NOCSE_log);
+		fprintf(NOCSW_log,"%d ",countW);
+		fflush(NOCSW_log);
+		fprintf(NOCSS_log,"%d ",countS);
+		fflush(NOCSS_log);
 	}
 }
 
@@ -207,25 +282,57 @@ int main(int argc, const char * argv[]) {
 		pthread_create(&input_t[i],NULL,input_thread,(void*)&i);
 		usleep(100000);
 	}
-	while(kill_state != 4095){
-		cout<<"Enter the thread u want to kill (1-12)"<<endl;
+	cout<<"Enter your choice"<<endl;
+	cout<<"1: Kill thread"<<endl;
+	cout<<"2: Blow up the queues"<<endl;
+	cout<<"3: QUIT"<<endl;
+	cin>>option;
+	if(option == 1){
+		while(kill_state != 4095){
+			cout<<"Enter the thread u want to kill (1-12)"<<endl;
+			cin>>option;
+			if(option>0 && option<13){
+				if((kill_state & (1<<(option-1))) == 0){
+					kill_state = kill_state | (1<<(option-1));
+					cout<<"kill_state:"<<kill_state<<endl;
+					pthread_join(input_t[option-1],NULL);
+				}
+				else{
+					cout<<"Thread already killed, Try something else"<<endl;				
+				}
+			}
+			else{
+				cout<<"WRONG OPTION"<<endl;
+			}
+		}
+	}
+	else if(option == 2){
+		cout<<"Enter the queue u want to blow up (1-12)"<<endl;
 		cin>>option;
 		if(option>0 && option<13){
-			if((kill_state & (1<<(option-1))) == 0){
-				kill_state = kill_state | (1<<(option-1));
-				cout<<"kill_state:"<<kill_state<<endl;
+			if((queue_state & (1<<(option-1))) == 0){
+				queue_state = queue_state | (1<<(option-1));
+				cout<<"queue_state:"<<queue_state<<endl;
 				pthread_join(input_t[option-1],NULL);
 			}
 			else{
-				cout<<"Thread already killed"<<endl;
-				exit(0);
+				cout<<"Queue Bit already set"<<endl;				
 			}
 		}
 		else{
 			cout<<"WRONG OPTION"<<endl;
-			exit(0);
 		}
 	}
+	else if(option == 3){ 
+		cout<<"QUITINGGGG!!!"<<endl;
+		exit(0);
+	}
+	else{
+		cout<<"WRONG OPTION"<<endl;
+		exit(0);
+	}
+	cout<<"SHUTTING DOWN SHORTLY"<<endl;
+	usleep(25000000);
 	return 0;
 }
 

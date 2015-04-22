@@ -1,0 +1,67 @@
+X = 0:1:72;
+traf = [1 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 2 2 2 2 2 2 2 2 2 2 2 2 ];
+thru = [3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 2 5 3 2 6 ];
+thruN = [1 0 1 0 1 0 0 1 0 1 0 0 1 0 1 0 1 2 1 2 1 1 2 1 2 1 1 2 1 2 1 0 1 0 1 0 0 1 0 1 0 0 1 0 1 0 1 2 1 2 1 1 2 1 2 1 1 2 1 2 1 0 1 0 1 0 0 1 0 1 0 0 1 ];
+thruE = [0 1 2 1 2 1 1 2 1 2 1 1 2 1 2 1 0 1 0 1 0 0 1 0 1 0 0 1 0 1 0 1 2 1 2 1 1 2 1 2 1 1 2 1 2 1 0 1 0 1 0 0 1 0 1 0 0 1 0 1 0 1 2 1 2 1 1 2 1 2 1 1 2 ];
+thruS = [1 0 1 0 1 0 0 1 0 1 0 0 1 0 1 0 1 2 1 2 1 1 2 1 2 1 1 2 1 2 1 0 1 0 1 0 0 1 0 1 0 0 1 0 1 0 1 2 1 2 1 1 2 1 2 1 1 2 1 2 1 0 1 0 1 0 0 1 0 1 0 0 1 ];
+thruW = [1 1 2 1 1 2 1 2 1 1 2 1 2 1 1 2 0 1 0 0 1 0 1 0 0 1 0 1 0 0 1 1 2 1 1 2 1 2 1 1 2 1 2 1 1 2 0 1 0 0 1 0 1 0 0 1 0 1 0 0 1 1 2 1 1 2 1 2 1 1 2 1 2 ];
+subplot(2,1,1);
+plot(X,traf);
+xlabel('time');
+ylabel('Traffic State');
+subplot(2,1,2);
+plot(X,thru,'*','color','black');
+xlabel('time');
+ylabel('NOCS');
+
+
+figure;
+subplot(3,1,1);
+plot(X,traf);
+xlabel('time');
+ylabel('Traffic State');
+subplot(3,1,2);
+plot(X,thruN,'*','color','black');
+xlabel('time');
+ylabel('NOCSN');
+subplot(3,1,3);
+plot(X,thruS,'*','color','red');
+xlabel('time');
+ylabel('NOCSS');
+
+
+figure;
+subplot(3,1,1);
+plot(X,traf);
+xlabel('time');
+ylabel('Traffic State');
+subplot(3,1,2);
+plot(X,thruE,'*','color','black');
+xlabel('time');
+ylabel('NOCSE');
+subplot(3,1,3);
+plot(X,thruW,'*','color','red');
+xlabel('time');
+ylabel('NOCSW');
+
+figure;
+subplot(5,1,1);
+plot(X,traf);
+xlabel('time');
+ylabel('Traffic State');
+subplot(5,1,2);
+plot(X,thruN,'*','color','black');
+xlabel('time');
+ylabel('NOCSN');
+subplot(5,1,3);
+plot(X,thruS,'*','color','red');
+xlabel('time');
+ylabel('NOCSS');
+subplot(5,1,4);
+plot(X,thruE,'*','color','black');
+xlabel('time');
+ylabel('NOCSE');
+subplot(5,1,5);
+plot(X,thruW,'*','color','red');
+xlabel('time');
+ylabel('NOCSW');
