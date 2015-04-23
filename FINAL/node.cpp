@@ -1,16 +1,21 @@
+/*
+ 	node.cpp
+  	Created by Santosh Narayankhedkar on 04/20/2015
+ 	Copyright (c) 2015 Narayankhedkar. All rights reserved.
+*/
+
+
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <pcap.h>
 #include <string.h>
 #include <queue>
 #include "car.h"
 #include <sys/socket.h>
-#include <netdb.h>
-#include <net/if.h>
-#include <ifaddrs.h>
-#include <signal.h>
+#include <sys/types.h> 
+#include <netinet/in.h>
+#include <netdb.h> 
 
 using namespace std;
 FILE *TRAF_log = fopen("traffic.txt","w"); 		/*Traffic log*/
@@ -30,6 +35,7 @@ u_short queue_state = 0 ; /*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
 char traffic_sig = '-'; 		/*Traffic state (A/B/C/D) */
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 int dist_type;
+char *node_name[4];
 
 /*Traffic Signal thread*/
 
@@ -68,8 +74,8 @@ void* traffic_thread(void *args){
 	}
 }
 
-bool check_set_bit(int pos){
-	if(queue_state & 1<<pos){
+bool check_set_bit(u_short var,int pos){
+	if(var & 1<<pos){
 		return true;
 	}
 	else{
@@ -99,10 +105,12 @@ void* queue_size_thread(void *args){
 
 void* input_thread(void *args){
 	int *i = (int*)args;
-	int lane = *i + 1;
+	int lane = i[1] + 1;
+	int dir = i[0];
+	int queue_bit = (dir * 3) + lane - 1;
 	unsigned int Vehicle_id = 0;
 	while(1){
-		if(kill_state & (1<<(lane-1))){
+		if(kill_state & (1<< queue_bit)){
 			cout<<"killing thread "<<lane<<endl;
 			pthread_exit(NULL);
 		}
@@ -110,7 +118,7 @@ void* input_thread(void *args){
 		Vehicle_id++;
 		vehicle->SID = lane;
 		vehicle->Vehicle_ID = Vehicle_id;
-		Q[lane - 1].push(vehicle);
+		Q[queue_bit].push(vehicle);
 		if( lane == 1 || lane == 2 || lane == 3){
 			vehicle->direction = 'N';
 		}
@@ -144,91 +152,91 @@ void* service_thread(void *args){
 	int count,countN,countE,countS,countW;
 	while(1){
 		count = countN = countE = countS = countW = 0;
+		usleep(1500000);
 		/*Turn lanes always get serviced*/
-		usleep(2000000);
-		if(!Q[2].empty() && !check_set_bit(2)){
+		if(!Q[2].empty() && !check_set_bit(kill_state,2)){
 			Q[2].pop();
 			count++;
 			countN++;
 		}
-		if(!Q[11].empty() && !check_set_bit(11)){
+		if(!Q[11].empty() && !check_set_bit(kill_state,11)){
 			Q[11].pop();
 			count++;
 			countW++;
 		}
-		if(!Q[8].empty() && !check_set_bit(8)){
+		if(!Q[8].empty() && !check_set_bit(kill_state,8)){
 			Q[8].pop();
 			count++;
 			countS++;
 		}
-		if(!Q[5].empty() && !check_set_bit(5)){
+		if(!Q[5].empty() && !check_set_bit(kill_state,5)){
 			Q[5].pop();
 			count++;
 			countE++;
 		}
 		if(traffic_sig == 'A'){
-			if(!Q[1].empty() && !check_set_bit(1)){
+			if(!Q[1].empty() && !check_set_bit(kill_state,1)){
 				Q[1].pop();
 				count++;
 				countN++;
 			}
-			else if(!Q[6].empty() && !check_set_bit(6)){
+			else if(!Q[6].empty() && !check_set_bit(kill_state,6)){
 				Q[6].pop();
 				count++;
 				countS++;
 			}
-			if(!Q[7].empty() && !check_set_bit(7)){
+			if(!Q[7].empty() && !check_set_bit(kill_state,7)){
 				Q[7].pop();
 				count++;
 				countS++;
 			}
-			else if(!Q[0].empty() && !check_set_bit(0)){
+			else if(!Q[0].empty() && !check_set_bit(kill_state,0)){
 				Q[0].pop();
 				count++;
 				countN++;
 			}
 		}
 		else if(traffic_sig == 'B'){
-			if(!Q[6].empty() && !check_set_bit(6)){
+			if(!Q[6].empty() && !check_set_bit(kill_state,6)){
 				Q[6].pop();
 				count++;
 				countS++;
 			}
-			if(!Q[0].empty() && !check_set_bit(0)){
+			if(!Q[0].empty() && !check_set_bit(kill_state,0)){
 				Q[0].pop();
 				count++;
 				countN++;
 			}
 		}
 		if(traffic_sig == 'C'){
-			if(!Q[4].empty() && !check_set_bit(4)){
+			if(!Q[4].empty() && !check_set_bit(kill_state,4)){
 				Q[4].pop();
 				count++;
 				countE++;
 			}
-			else if(!Q[9].empty() && !check_set_bit(9)){
+			else if(!Q[9].empty() && !check_set_bit(kill_state,9)){
 				Q[9].pop();
 				count++;
 				countW++;
 			}
-			if(!Q[10].empty() && !check_set_bit(10)){
+			if(!Q[10].empty() && !check_set_bit(kill_state,10)){
 				Q[10].pop();
 				count++;
 				countW++;
 			}
-			else if(!Q[3].empty() && !check_set_bit(3)){
+			else if(!Q[3].empty() && !check_set_bit(kill_state,3)){
 				Q[3].pop();
 				count++;
 				countE++;
 			}
 		}
 		else if(traffic_sig == 'D'){
-			if(!Q[9].empty() && !check_set_bit(9)){
+			if(!Q[9].empty() && !check_set_bit(kill_state,9)){
 				Q[9].pop();
 				count++;
 				countW++;
 			}
-			if(!Q[3].empty() && !check_set_bit(3)){
+			if(!Q[3].empty() && !check_set_bit(kill_state,3)){
 				Q[3].pop();
 				count++;
 				countE++;
@@ -263,14 +271,144 @@ void* service_thread(void *args){
 	}
 }
 
+void* server_thread(void *args){
+	int *i =(int *)args;
+	int portno,n,sockfd, newsockfd,dir = *i - 2;
+	cout<<"SERVER THREAD CREATED:"<<*i<<endl;
+	while(1);
+	socklen_t clilen;
+	struct car* veh;
+	struct sockaddr_in serv_addr, cli_addr;
+	if(dir == 0){
+		portno = 10000;
+	}
+	else if(dir == 1){
+		portno = 20000;
+	}
+	else if(dir == 2){
+		portno = 30000;
+	}
+	else if(dir == 3){
+		portno = 40000;
+	}
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        cout<<"ERROR opening socket"<<endl;
+    }
+    memset(&serv_addr,0,sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(portno);
+    if (bind(sockfd, (struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0){
+              cout<<"ERROR on binding"<<endl;
+    }
+    listen(sockfd,5);
+    clilen = sizeof(cli_addr);
+    newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr,&clilen);
+    if (newsockfd < 0){ 
+          	cout<<"ERROR on accept"<<endl;
+    }
+    cout<<"accepted"<<endl;
+    while(1){
+    	veh = (struct car*)malloc(sizeof(struct car));
+    	n = recv(newsockfd,veh,sizeof(struct car),0);
+    	if (n < 0){
+    		cout<<"ERROR reading from socket"<<endl;
+  		}
+  		Q[(dir*3) + veh->SID - 1].push(veh);
+  	}
+    close(newsockfd);
+    close(sockfd);
+    return 0; 
+}
+
+
+void* client_thread(void *args){
+	usleep(100000);
+	char option;
+	int *i =(int *)args;
+	int sockfd,count ,queue_bit, portno, n, dir = *i - 2;
+	cout<<"CLIENT THREAD CREATED:"<<*i<<endl;
+	while(1);
+	struct sockaddr_in serv_addr;
+    struct hostent *server;
+    struct car* veh;
+	if(dir == 0){
+		portno = 30000;
+	}
+	else if(dir == 1){
+		portno = 40000;
+	}
+	else if(dir == 2){
+		portno = 10000;
+	}
+	else if(dir == 3){
+		portno = 20000;
+	}
+	cout<<"1"<<endl;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0){ 
+    	cout<<"ERROR opening socket"<<endl;
+    }
+    cout<<dir<<endl;
+    cout<<"2"<<endl;
+    cin>>option;
+    server = gethostbyname(node_name[dir]);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    cout<<"3"<<endl;
+    memset(&serv_addr,0,sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+    serv_addr.sin_port = htons(portno);
+    cout<<"4"<<endl;
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0){ 
+        cout<<"ERROR connecting"<<endl;
+    }
+    cout<<"Connected"<<endl;
+    while(1);
+    while(1){
+    	count = 1;
+    	usleep(1500000);
+		while(count != 4){
+			queue_bit = (4 * count) - dir; 
+			if(!Q[queue_bit].empty()){
+				veh = Q[queue_bit].front();
+				n = send(sockfd,veh,sizeof(struct car),0);
+				if (n < 0) {
+        			cout<<"ERROR writing to socket"<<endl;
+    			}
+				Q[queue_bit].pop();
+			}
+			count ++;
+		}
+	}
+    close(sockfd);
+}
+
 
 /*1 - Input Distribution Type*/
 
 int main(int argc, const char * argv[]) {
 	dist_type = atoi(argv[1]);
-	int option;
+	int option,count = 2,input_arg[2],len;
 	pthread_t traffic_t,Qsize_t,service_t;
-	pthread_t input_t[12];  /*Input threads for 12 queues*/
+	pthread_t input_t[4][3];  /*Input threads for for each direction*/
+	pthread_t socket_t[4][2];
+	if(argc != 6){
+		cout<<"NOT ENOUGH ARGUMENT"<<endl;
+		exit(0);
+	}
+	while(count != 6){
+		len = strlen(argv[count]);
+		node_name[count - 2] = (char *)malloc(sizeof(char)* (len + 1));
+		strncpy(node_name[count - 2],argv[count],len);
+		node_name[count - 2][len] = '\0';
+		count++;
+	}
+	count = 2;
 	/*Traffic thread*/
 	pthread_create(&traffic_t,NULL,traffic_thread,NULL);
 	/*Queue Size thread*/
@@ -278,10 +416,23 @@ int main(int argc, const char * argv[]) {
 	/*Service threads*/
 	pthread_create(&service_t,NULL,service_thread,NULL);
 	/*Input threads*/
-	for(int i = 0; i < 12; i++){
-		pthread_create(&input_t[i],NULL,input_thread,(void*)&i);
-		usleep(100000);
+	while(count != 6){
+		if(strncmp(argv[count],"none",4) == 0){
+			for(int i = 0; i < 3; i++){
+				input_arg[0] = count - 2;
+				input_arg[1] = i;
+				pthread_create(&input_t[count-2][i],NULL,input_thread,(void*)&input_arg);
+				usleep(100000);
+			}
+		}
+		else{
+			kill_state = kill_state | 7 << (count - 2)*3;
+			pthread_create(&socket_t[count-2][0],NULL,server_thread,(void*)&count);
+			pthread_create(&socket_t[count-2][1],NULL,client_thread,(void*)&count);
+		}
+		count++;
 	}
+	usleep(5000000);
 	cout<<"Enter your choice"<<endl;
 	cout<<"1: Kill thread"<<endl;
 	cout<<"2: Blow up the queues"<<endl;
@@ -295,10 +446,12 @@ int main(int argc, const char * argv[]) {
 				if((kill_state & (1<<(option-1))) == 0){
 					kill_state = kill_state | (1<<(option-1));
 					cout<<"kill_state:"<<kill_state<<endl;
-					pthread_join(input_t[option-1],NULL);
+					count = ((option - 1) / 3);
+					option = (option - 1) % 3;
+					pthread_join(input_t[count][option],NULL);
 				}
 				else{
-					cout<<"Thread already killed, Try something else"<<endl;				
+					cout<<"Thread already killed, or its not an input thread, Try something else"<<endl;				
 				}
 			}
 			else{
@@ -313,7 +466,9 @@ int main(int argc, const char * argv[]) {
 			if((queue_state & (1<<(option-1))) == 0){
 				queue_state = queue_state | (1<<(option-1));
 				cout<<"queue_state:"<<queue_state<<endl;
-				pthread_join(input_t[option-1],NULL);
+				count = ((option - 1) / 3);
+				option = (option - 1) % 3;
+				pthread_join(input_t[count][option],NULL);
 			}
 			else{
 				cout<<"Queue Bit already set"<<endl;				
@@ -332,7 +487,7 @@ int main(int argc, const char * argv[]) {
 		exit(0);
 	}
 	cout<<"SHUTTING DOWN SHORTLY"<<endl;
-	usleep(25000000);
+	usleep(60000000);
 	return 0;
 }
 
