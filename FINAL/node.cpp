@@ -4,6 +4,29 @@
  	Copyright (c) 2015 Narayankhedkar. All rights reserved.
 */
 
+/*
+				   | | | | | | |
+ 				   |	 |     |
+				   | | | | | | |	
+				   |	 | 	   |	
+				   | | | | | | |
+				   |	 | 	   |
+___________________| | | | | | |_____________________
+_ _ _ _ _ _ _ _ _ _12 	  1 2 3	_ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _11 			_ _ _ _ _ _ _ _ _ _ _ 
+___________________10 			_____________________
+_ _ _ _ _ _ _ _ _ _ 		   4_ _ _ _ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _ _ _ 		   5_ _ _ _ _ _ _ _ _ _ _
+___________________ 9 8	7      6_____________________
+				   | | | | | | |
+				   | 	 |	   |
+				   | | | | | | |
+				   | 	 | 	   |
+				   | | | | | | |
+				   |  	 | 	   |
+				   | | | | | | | 
+*/
+
 
 #include <iostream>
 #include <stdio.h>
@@ -29,8 +52,9 @@ FILE *NOCSW_log = fopen("throughputW.txt","w");   /*No. of Cars Serviced in West
 queue<car*> Q[12];
 
 /*Bit Vector for kill state */
-u_short kill_state = 0 ; /*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
-u_short queue_state = 0 ; /*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
+u_short kill_state = 0 ; 		/*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
+u_short queue_state = 0 ; 		/*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
+unsigned char ser_cli_state = 0; 		/*|WC|SC|EC|NC|WS|SS|ES|NS|*/
 
 char traffic_sig = '-'; 		/*Traffic state (A/B/C/D) */
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
@@ -273,9 +297,8 @@ void* service_thread(void *args){
 
 void* server_thread(void *args){
 	int *i =(int *)args;
-	int portno,n,sockfd, newsockfd,dir = *i - 2;
-	cout<<"SERVER THREAD CREATED:"<<*i<<endl;
-	while(1);
+	int portno,n,sockfd, newsockfd,dir = *i;
+	cout<<"SERVER THREAD CREATED:"<<dir<<endl;
 	socklen_t clilen;
 	struct car* veh;
 	struct sockaddr_in serv_addr, cli_addr;
@@ -310,11 +333,16 @@ void* server_thread(void *args){
     }
     cout<<"accepted"<<endl;
     while(1){
+    	if(ser_cli_state & 1<<dir){
+    		cout<<"Killing server thread"<<endl;
+    		pthread_exit(NULL);
+    	}
     	veh = (struct car*)malloc(sizeof(struct car));
     	n = recv(newsockfd,veh,sizeof(struct car),0);
     	if (n < 0){
     		cout<<"ERROR reading from socket"<<endl;
   		}
+  		cout<<"RECEIVING!"<<endl;
   		Q[(dir*3) + veh->SID - 1].push(veh);
   	}
     close(newsockfd);
@@ -324,15 +352,15 @@ void* server_thread(void *args){
 
 
 void* client_thread(void *args){
-	usleep(100000);
 	char option;
 	int *i =(int *)args;
-	int sockfd,count ,queue_bit, portno, n, dir = *i - 2;
-	cout<<"CLIENT THREAD CREATED:"<<*i<<endl;
-	while(1);
+	int sockfd,count ,queue_bit, portno, n, dir = *i;
 	struct sockaddr_in serv_addr;
     struct hostent *server;
     struct car* veh;
+    cout<<"CLIENT THREAD CREATED:"<<dir<<endl;
+	cout<<"Enter any key and hit enter to start the the client"<<endl;
+	cin>>option;
 	if(dir == 0){
 		portno = 30000;
 	}
@@ -345,32 +373,29 @@ void* client_thread(void *args){
 	else if(dir == 3){
 		portno = 20000;
 	}
-	cout<<"1"<<endl;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0){ 
     	cout<<"ERROR opening socket"<<endl;
     }
-    cout<<dir<<endl;
-    cout<<"2"<<endl;
-    cin>>option;
-    server = gethostbyname(node_name[dir]);
+   server = gethostbyname(node_name[dir]);
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         exit(0);
     }
-    cout<<"3"<<endl;
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
     serv_addr.sin_port = htons(portno);
-    cout<<"4"<<endl;
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0){ 
+     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0){ 
         cout<<"ERROR connecting"<<endl;
     }
     cout<<"Connected"<<endl;
-    while(1);
-    while(1){
+   	while(1){
     	count = 1;
+    	if((ser_cli_state & 1<<dir) && Q[4-dir].empty() && Q[8-dir].empty() && Q[12-dir].empty()){
+    		cout<<"killing client thread"<<endl;
+    		pthread_exit(NULL);
+    	}
     	usleep(1500000);
 		while(count != 4){
 			queue_bit = (4 * count) - dir; 
@@ -380,6 +405,7 @@ void* client_thread(void *args){
 				if (n < 0) {
         			cout<<"ERROR writing to socket"<<endl;
     			}
+    			cout<<"SENDING!"<<endl;
 				Q[queue_bit].pop();
 			}
 			count ++;
@@ -393,7 +419,7 @@ void* client_thread(void *args){
 
 int main(int argc, const char * argv[]) {
 	dist_type = atoi(argv[1]);
-	int option,count = 2,input_arg[2],len;
+	int option,count = 2,input_arg[2],len,dir;
 	pthread_t traffic_t,Qsize_t,service_t;
 	pthread_t input_t[4][3];  /*Input threads for for each direction*/
 	pthread_t socket_t[4][2];
@@ -421,18 +447,22 @@ int main(int argc, const char * argv[]) {
 			for(int i = 0; i < 3; i++){
 				input_arg[0] = count - 2;
 				input_arg[1] = i;
+				ser_cli_state = ser_cli_state | 1<<(count - 2);
+				ser_cli_state = ser_cli_state | 1<<((count - 2) + 4);
 				pthread_create(&input_t[count-2][i],NULL,input_thread,(void*)&input_arg);
 				usleep(100000);
 			}
 		}
 		else{
-			kill_state = kill_state | 7 << (count - 2)*3;
-			pthread_create(&socket_t[count-2][0],NULL,server_thread,(void*)&count);
-			pthread_create(&socket_t[count-2][1],NULL,client_thread,(void*)&count);
+			kill_state = kill_state | 7 << (count - 2) * 3;
+			dir = count - 2;
+			pthread_create(&socket_t[dir][0],NULL,server_thread,(void*)&dir);
+			usleep(5000);
+			pthread_create(&socket_t[dir][1],NULL,client_thread,(void*)&dir);
+			usleep(100000);
 		}
 		count++;
 	}
-	usleep(5000000);
 	cout<<"Enter your choice"<<endl;
 	cout<<"1: Kill thread"<<endl;
 	cout<<"2: Blow up the queues"<<endl;
@@ -443,15 +473,21 @@ int main(int argc, const char * argv[]) {
 			cout<<"Enter the thread u want to kill (1-12)"<<endl;
 			cin>>option;
 			if(option>0 && option<13){
+				count = ((option - 1) / 3);
 				if((kill_state & (1<<(option-1))) == 0){
 					kill_state = kill_state | (1<<(option-1));
 					cout<<"kill_state:"<<kill_state<<endl;
-					count = ((option - 1) / 3);
 					option = (option - 1) % 3;
 					pthread_join(input_t[count][option],NULL);
 				}
+				else if((ser_cli_state & (1<<count)) == 0){
+					ser_cli_state = ser_cli_state | 1<<count;
+					ser_cli_state = ser_cli_state | 1<<(count + 4);
+					cout<<"ser_cli_state:"<<ser_cli_state<<endl;
+					pthread_join(socket_t[count][0],NULL);
+				}
 				else{
-					cout<<"Thread already killed, or its not an input thread, Try something else"<<endl;				
+					cout<<"Thread already killed"<<endl;				
 				}
 			}
 			else{
