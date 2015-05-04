@@ -1,3 +1,8 @@
+# timestamp stateoftrafficsignal
+# 0 —> ns green 
+# 1 —> ns yellow 
+# 2 -> we green 
+# 3 we —> yellow 
 0.00  0 
 25.00 1 
 30.00 2 

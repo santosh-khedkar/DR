@@ -1,9 +1,12 @@
 traffic = load('nodeTRAF_log.txt');
 NOCServ = load('nodeNOCS_log.txt');
 Queue = load('nodeQ_log.txt');
+
+
 traf = num2cell(traffic,1);
 NOCS = num2cell(NOCServ,1);
 Q = num2cell(Queue,1);
+
 subplot(2,1,1);
 for i = 1: length(traf{1})
     hold on;
@@ -17,6 +20,7 @@ for i = 1: length(traf{1})
         stem(traf{1}(i),traf{2}(i)- 2,'marker','*','color','red')
     end
 end
+
 legend('G=N-S(G)','Y=N-S(Y)','B=W-E(G)','R= W-E(Y)');
 hold off;
 xlabel('time');
