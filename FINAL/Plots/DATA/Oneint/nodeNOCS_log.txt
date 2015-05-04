@@ -1,3 +1,5 @@
+# timestamp trafficsignal nocs nocsn nocsw nocsw nocse 
+# traffic signal key: 0 means ns green, 1 mean ns yellow, 2 means we green, 3 means we yellow 
 1.50 0 0 0 0 0 0 
 3.00 0 0 0 0 0 0 
 4.50 0 0 0 0 0 0 
