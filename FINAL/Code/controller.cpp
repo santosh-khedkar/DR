@@ -43,6 +43,7 @@ ___________________ 9 8	7      6_____________________
 #include <netdb.h> 
 
 using namespace std;
+
 FILE *TRAF_log;								/*Traffic log*/
 FILE *NOCS_log;   							/*No. of Cars Serviced*/
 FILE *Q_log;	   						 	/*Size of the queues*/
@@ -52,14 +53,14 @@ u_short update_serv_state[4]; 				/*Received Update */
 unsigned char ser_cli_state = 0; 			/*|EC|SC|WC|NC|ES|SS|WS|NS|*/
 char traffic_sig = '-'; 					/*Traffic state (A/B/C/D) */
 int dist_type;  							/* 0-CBR, 1-POISSON*/
-char *node_name[4]; 						/*Name of nodes in each direction*/
+char *node_name[4],*config_f; 				/*Name of nodes in each direction and config file*/
 
 /*Traffic Signal thread*/
 void* traffic_thread(void *args){
-	int count=0,traf[4][2];
+	int count=0,traf[4][2];					/*traf[i][0] = Signal state , traf[i][1] = Time in seconds*/
 	struct timeval start, end;
 	char str[25],*pch;
-	FILE *conf = fopen("config.txt","r");
+	FILE *conf = fopen(config_f,"r");
 	while(fgets(str,25,conf)!=NULL){
 		pch = strtok (str," ");
   		if(strncmp(pch,"nsg",3) == 0){
@@ -147,7 +148,6 @@ void* queue_size_thread(void *args){
 }
 
 /*Checks whether var is set at pos bit*/
-
 bool check_set_bit(u_short var,int pos){
 	if(var & 1<<pos){
 		return true;
@@ -160,8 +160,8 @@ bool check_set_bit(u_short var,int pos){
 /*Input thread: Inputs vehicle / packets every 5s if the queue size doesn't exceed LANE LENGTH*/
 void* input_thread(void *args){
 	int *i = (int*)args;
-	int lane = i[1] + 1;
-	int dir = i[0];
+	int lane = i[1] + 1;					/*Lane number*/
+	int dir = i[0];							/*Direction*/
 	int queue_bit = (dir * 3) + lane - 1;
 	unsigned int Vehicle_id = 0;
 	while(1){
@@ -207,6 +207,7 @@ void* input_thread(void *args){
 
 
 /*Service thread services services those queues which can be served at that instant of traffic signal*/
+/*Servicing every 1.5 seconds*/
 void* service_thread(void *args){
 	int count,countN,countE,countS,countW,temp;
 	struct timeval start, end;
@@ -235,6 +236,7 @@ void* service_thread(void *args){
 			count++;
 			countE++;
 		}
+
 		if(traffic_sig == 'A'){
 			if(!Q[1].empty() && !check_set_bit(kill_state,1)){
 				Q[1].pop();
@@ -393,7 +395,6 @@ void* server_thread(void *args){
 }
 
 /*Client thread for forwarding vehicles*/
-
 void* client_thread(void *args){
 	char option;
 	int *i =(int *)args;
@@ -493,8 +494,6 @@ void* client_thread(void *args){
 	}
 }
 
-
-
 /*Control Server Thread*/
 void* ctrl_server_thread(void *args){
 	int *i =(int *)args;
@@ -548,7 +547,6 @@ void* ctrl_server_thread(void *args){
   	}
     return 0; 
 }
-
 
 /*Control Client Thread*/
 void* ctrl_client_thread(void *args){
@@ -623,16 +621,18 @@ int main(int argc, char * argv[]) {
 	extern char *optarg;
 	extern int optind;
 	int option,count = 2,input_arg[2],len,dir;
-	static char usage[] = "./<node_name> -d <dist_type> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>\n\n";
+	static char usage[] = "./<node_name> -d <dist_type> -f <config_file> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>\n\n";
 	char TRAF_str[25],NOCS_str[25],Q_str[25];			/*File names*/
 	pthread_t traffic_t,Qsize_t,service_t;
 	pthread_t input_t[4][3];  				/*Input threads for for each direction*/
 	pthread_t socket_t[4][2]; 				/*socket threads for each direction*/
 	pthread_t ctrl_socket_t[4][2]; 			/*socket threads for each direction*/
-	while ((c = getopt(argc, argv, "d:n:w:s:e:")) != -1)
+	while ((c = getopt(argc, argv, "d:f:n:w:s:e:")) != -1)
 		switch (c) {
 		case 'd':
 			dist_type = atoi(optarg);
+		case 'f':
+			config_f = optarg;
 		case 'n':
 			node_name[0] = optarg;
 			break;
