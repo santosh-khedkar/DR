@@ -55,9 +55,23 @@ char traffic_sig = '-'; 					/*Traffic state (A/B/C/D) */
 int dist_type;  							/* 0-CBR, 1-POISSON*/
 char *node_name[4],*config_f; 				/*Name of nodes in each direction and config file*/
 
-/*Traffic Signal thread*/
+/*Traffic Signal thread 
+
+Reads the config.txt file (or the name specified on the commmand line to 
+parse and create a 4x2 two-dimentional structure called traf
+
+traf[i][0] = Signal state 
+traf[i][1] = Time in second
+
+Signal state key: 
+0 --> nsg 
+1 --> nsy 
+2 --> weg 
+3 --> wey
+
+*/ 
 void* traffic_thread(void *args){
-	int count=0,traf[4][2];					/*traf[i][0] = Signal state , traf[i][1] = Time in seconds*/
+	int count=0,traf[4][2];					
 	struct timeval start, end;
 	char str[25],*pch;
 	FILE *conf = fopen(config_f,"r");
@@ -84,8 +98,8 @@ void* traffic_thread(void *args){
    			traf[count][1] = atoi(pch);
    		}
    		else{
-   			cout<<"ERROR"<<endl;
-   			exit(0);
+   			cout<<"ERROR: unknown symbol in config file. \n ERROR: Valid traffic state symbols are nsg, nsy, weg, wey \n ERROR: for example: nsg 10" <<endl;
+   			exit(1);
    		}
   		count++;
 	}
@@ -116,14 +130,19 @@ void* traffic_thread(void *args){
 	}
 }
 
-/*Queue size thread*/
+/*Queue size thread
+This thread keeps tracks of the current queue size and prints it every X seconds 
+
+*/
 void* queue_size_thread(void *args){
 	struct timeval start, end;
+	
+	/* Start samplng only after the simulation has run for some time (1sec) */ 
 	usleep(1000000);
 	gettimeofday(&start,NULL);
 	while(1){    	
-    	gettimeofday(&end, NULL);
-		fprintf(Q_log,"%0.2f ",((double)end.tv_sec + (double)end.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
+	        gettimeofday(&end, NULL);
+	        fprintf(Q_log,"%0.2f ",((double)end.tv_sec + (double)end.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
 		fflush(Q_log);
 		if(traffic_sig == 'A'){
 			fprintf(Q_log,"0 ");
@@ -143,6 +162,8 @@ void* queue_size_thread(void *args){
 		}
 		fprintf(Q_log,"%zd %zd %zd %zd %zd %zd %zd %zd %zd %zd %zd %zd\n",Q[0].size(),Q[1].size(),Q[2].size(),Q[3].size(),Q[4].size(),Q[5].size(),Q[6].size(),Q[7].size(),Q[8].size(),Q[9].size(),Q[10].size(),Q[11].size());
     	fflush(Q_log);
+
+	/* Sampling the queue every 0.5 seconds */ 
         usleep(500000);
     }
     return (void*)-1;
@@ -158,7 +179,13 @@ bool check_set_bit(u_short var,int pos){
 	} 
 }
 
-/*Input thread: Inputs vehicle / packets every 5s if the queue size doesn't exceed LANE LENGTH*/
+/*Input thread: 
+
+Inputs vehicle / packets every 5s if the queue size doesn't exceed LANE LENGTH
+i[0]   direction 0 --> n , 1 --> w , 2 --> S and 3 --> E 
+i[1] + 1  lane number 1 --> closest to divider, 2 --> central lane , 3 --> right turn lane 
+
+*/
 void* input_thread(void *args){
 	int *i = (int*)args;
 	int lane = i[1] + 1;					/*Lane number*/
@@ -166,10 +193,14 @@ void* input_thread(void *args){
 	int queue_bit = (dir * 3) + lane - 1;
 	unsigned int Vehicle_id = 0;
 	while(1){
+	        
+	  /* used for simulating failures */ 
 		if(kill_state & (1<< queue_bit)){
 			cout<<"killing thread "<<lane<<endl;
 			pthread_exit(NULL);
 		}
+
+
 		struct car* vehicle = (struct car*)malloc(sizeof(struct car));
 		Vehicle_id++;
 		vehicle->SID = lane;
@@ -207,14 +238,21 @@ void* input_thread(void *args){
 }
 
 
-/*Service thread services services those queues which can be served at that instant of traffic signal*/
-/*Servicing every 1.5 seconds*/
+/*Service thread services those queues which can be served at that instant of traffic signal
+ Servicing every 1.5 seconds 
+
+
+*/ 
+
 void* service_thread(void *args){
 	int count,countN,countE,countS,countW;
 	struct timeval start, end;
+
 	gettimeofday(&start,NULL);
 	while(1){
 		count = countN = countE = countS = countW = 0;
+		
+		/* Service all 12 queues every 1.5 seconds */ 
 		usleep(1500000);
 		/*Turn lanes always get serviced*/
 		if(!Q[2].empty() && !check_set_bit(kill_state,10)){
@@ -388,7 +426,7 @@ void* server_thread(void *args){
     		close(newsockfd);
     		close(sockfd);
     		pthread_exit(NULL);
-    	}
+		}
   		usleep(1000000);
   		queue_bit = (dir * 3) + veh->SID - 1;
   		Q[queue_bit].push(veh);
@@ -621,13 +659,17 @@ void* ctrl_client_thread(void *args){
 int main(int argc, char * argv[]) {
 	int c, err = 0; 
 	extern char *optarg;
+
+	/* input_arg is a 1-dim array with direction, lane */ 
 	int option,count = 2,input_arg[2],len,dir;
+
 	static char usage[] = "./<node_name> -d <dist_type> -f <config_file> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>\n\n";
 	char TRAF_str[25],NOCS_str[25],Q_str[25];			/*File names*/
 	pthread_t traffic_t,Qsize_t,service_t;
 	pthread_t input_t[4][3];  				/*Input threads for for each direction*/
 	pthread_t socket_t[4][2]; 				/*socket threads for each direction*/
 	pthread_t ctrl_socket_t[4][2]; 			/*socket threads for each direction*/
+
 	while ((c = getopt(argc, argv, "d:f:n:w:s:e:")) != -1)
 		switch (c) {
 		case 'd':
@@ -649,13 +691,19 @@ int main(int argc, char * argv[]) {
 		case '?':
 			err = 1;
 			break;
+		default :
+			err = 1;
+			break; 
 		}
 	if (err) {
 		fprintf(stderr, usage, argv[0]);
 		exit(1);
 	}
 
-	/*Log files*/
+
+	/*Log files
+	  Name the log files based on the node name
+	 */
 	len = strlen(argv[0]);
 	for(int i = 2; i<len;i++){
 		TRAF_str[i-2] = argv[0][i];
@@ -675,23 +723,46 @@ int main(int argc, char * argv[]) {
 	
 	/*Traffic thread*/
 	pthread_create(&traffic_t,NULL,traffic_thread,NULL);
+
+
 	/*Queue Size thread*/
 	pthread_create(&Qsize_t,NULL,queue_size_thread,NULL);
+
 	/*Service threads*/
 	pthread_create(&service_t,NULL,service_thread,NULL);
+
+
 	/*Input threads*/
+
+
+	/* if input_arg[0] = 0 --> direction north 
+	      input_arg[0] =1  --> direction is west 
+	      input_arg[0] =2 --> direction is south 
+	      input_arg[0] =3 --> direction is east 
+
+	 */ 
+	count = 2 
 	while(count != 6){
+
+	  /* if there is no connection intersections then there is a "none" 
+	     if there is then we need to setup communication with sockets */ 
+
 		if(strncmp(node_name[count-2],"none",4) == 0){
+		  /* generate three input queue thread for each direction. The direction value is in "count-2" 
+		     the lane number is "i+1" */ 
 			for(int i = 0; i < 3; i++){
 				input_arg[0] = count - 2;   /* Direction*/
-				input_arg[1] = i;			/*Lane*/
+				input_arg[1] = i;	/*Lane*/
+				/* 8-bit vector for inter-intersection connections ESWN (client) ESWN (server) */ 
 				ser_cli_state = ser_cli_state | 1<<(count - 2);
 				ser_cli_state = ser_cli_state | 1<<((count - 2) + 4);
 				pthread_create(&input_t[count-2][i],NULL,input_thread,(void*)&input_arg);
+				/* 0.1 second for sync */ 
 				usleep(100000);
 			}
 		}
 		else{
+		  /* 12 -bit vector to  where a 3-bit clustering indicate a position/presence of an intersection */ 
 			kill_state = kill_state | 7 << (count - 2) * 3;
 			dir = count - 2;
 			pthread_create(&socket_t[dir][0],NULL,server_thread,(void*)&dir);
@@ -749,6 +820,8 @@ int main(int argc, char * argv[]) {
 	}
 	while(Q[0].empty() && Q[1].empty() && Q[2].empty() && Q[3].empty() && Q[4].empty() && Q[5].empty() && Q[6].empty() && Q[7].empty() && Q[8].empty() && Q[9].empty() && Q[10].empty() && Q[11].empty());
 	cout<<"SHUTTING DOWN SHORTLY"<<endl;
+
+	/* Sleep to ensure all the queues are serviced and empty before quitting */ 
 	usleep(60000000);
 	return 0;
 }
