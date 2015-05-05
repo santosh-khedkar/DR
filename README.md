@@ -1,2 +1,0 @@
-# DR
-Distributed Traffic Scheduling 
