@@ -623,7 +623,7 @@ int main(int argc, char * argv[]) {
 	extern char *optarg;
 	extern int optind;
 	int option,count = 2,input_arg[2],len,dir;
-	static char usage[] = "./<node_name> -d <dist_type> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>";
+	static char usage[] = "./<node_name> -d <dist_type> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>\n\n";
 	char TRAF_str[25],NOCS_str[25],Q_str[25];			/*File names*/
 	pthread_t traffic_t,Qsize_t,service_t;
 	pthread_t input_t[4][3];  				/*Input threads for for each direction*/
