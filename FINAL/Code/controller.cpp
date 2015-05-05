@@ -2,7 +2,7 @@
  	node.cpp
   	Created by Santosh Narayankhedkar on 04/20/2015
  	Copyright (c) 2015 Narayankhedkar. All rights reserved.
- 	USAGE: ./<node_name> -d <dist_type> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>
+ 	USAGE: ./<node_name> -d <dist_type> -f <config_file> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>
 */
 
 /*
