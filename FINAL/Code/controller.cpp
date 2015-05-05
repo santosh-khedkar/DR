@@ -92,7 +92,6 @@ void* traffic_thread(void *args){
 	count = 0;
 	gettimeofday(&start,NULL);
 	while(1){
-
 		gettimeofday(&end, NULL);
 		fprintf(TRAF_log,"%0.2f ",((double)end.tv_sec + (double)end.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
 		fflush(TRAF_log);
@@ -120,6 +119,7 @@ void* traffic_thread(void *args){
 /*Queue size thread*/
 void* queue_size_thread(void *args){
 	struct timeval start, end;
+	usleep(1000000);
 	gettimeofday(&start,NULL);
 	while(1){    	
     	gettimeofday(&end, NULL);
@@ -145,6 +145,7 @@ void* queue_size_thread(void *args){
     	fflush(Q_log);
         usleep(500000);
     }
+    return (void*)-1;
 }
 
 /*Checks whether var is set at pos bit*/
@@ -209,7 +210,7 @@ void* input_thread(void *args){
 /*Service thread services services those queues which can be served at that instant of traffic signal*/
 /*Servicing every 1.5 seconds*/
 void* service_thread(void *args){
-	int count,countN,countE,countS,countW,temp;
+	int count,countN,countE,countS,countW;
 	struct timeval start, end;
 	gettimeofday(&start,NULL);
 	while(1){
@@ -335,6 +336,7 @@ void* service_thread(void *args){
 		fprintf(NOCS_log,"%d \n",countS);
 		fflush(NOCS_log);
 	}
+	return (void*)-1;
 }
 
 /*Server Thread for receiving forwarded vehicles*/
@@ -478,7 +480,7 @@ void* client_thread(void *args){
 			else if(queue_bit % 3 == 1){		/* Straight lane vehicles */
 				pos = queue_bit;
 				if(!Q[queue_bit].empty() && !check_set_bit(update_serv_state[dir],pos)){     
-					if((queue_bit / 3) == 0 && traffic_sig == 'A' || (queue_bit / 3) == 1 && traffic_sig == 'C' || (queue_bit / 3) == 2 && traffic_sig == 'A' || (queue_bit / 3) == 3 && traffic_sig == 'C'){
+					if(((queue_bit / 3) == 0 && traffic_sig == 'A') || ((queue_bit / 3) == 1 && traffic_sig == 'C') || ((queue_bit / 3) == 2 && traffic_sig == 'A') || ((queue_bit / 3) == 3 && traffic_sig == 'C')){
 						veh = Q[queue_bit].front();
 						n = send(sockfd,veh,sizeof(struct car),0);
 						if (n < 0) {
@@ -553,7 +555,7 @@ void* ctrl_client_thread(void *args){
 	char option;
 	int *i =(int *)args;
 	u_short serv_state = 0;			/*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
-	int sockfd,count,queue_bit, portno, n, dir = *i;
+	int sockfd,count, portno, n, dir = *i;
 	struct sockaddr_in serv_addr;
     struct hostent *server;
     if(dir == 0){
@@ -619,7 +621,6 @@ void* ctrl_client_thread(void *args){
 int main(int argc, char * argv[]) {
 	int c, err = 0; 
 	extern char *optarg;
-	extern int optind;
 	int option,count = 2,input_arg[2],len,dir;
 	static char usage[] = "./<node_name> -d <dist_type> -f <config_file> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>\n\n";
 	char TRAF_str[25],NOCS_str[25],Q_str[25];			/*File names*/
