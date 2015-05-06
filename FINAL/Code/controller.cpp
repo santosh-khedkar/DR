@@ -250,7 +250,7 @@ void* service_thread(void *args){
 		/* Service all 12 queues every 1.5 seconds */ 
 		usleep(1500000);
 		/*Turn lanes always get serviced*/
-		if(!Q[2].empty() && !check_set_bit(kill_state,10)){
+		if(!Q[2].empty() && !check_set_bit(kill_state,4)){
 			veh = Q[2].front();
 			gettimeofday(&end_temp, NULL);
 			fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -261,7 +261,7 @@ void* service_thread(void *args){
 			count++;
 			countN++;
 		}
-		if(!Q[11].empty() && !check_set_bit(kill_state,7)){
+		if(!Q[11].empty() && !check_set_bit(kill_state,1)){
 			veh = Q[11].front();
 			gettimeofday(&end_temp, NULL);
 			fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -272,7 +272,7 @@ void* service_thread(void *args){
 			count++;
 			countW++;
 		}
-		if(!Q[8].empty() && !check_set_bit(kill_state,4)){
+		if(!Q[8].empty() && !check_set_bit(kill_state,10)){
 			veh = Q[8].front();
 			gettimeofday(&end_temp, NULL);
 			fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -283,7 +283,7 @@ void* service_thread(void *args){
 			count++;
 			countS++;
 		}
-		if(!Q[5].empty() && !check_set_bit(kill_state,1)){
+		if(!Q[5].empty() && !check_set_bit(kill_state,7)){
 			veh = Q[5].front();
 			gettimeofday(&end_temp, NULL);
 			fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -296,7 +296,7 @@ void* service_thread(void *args){
 		}
 
 		if(traffic_sig == 'A'){
-			if(!Q[1].empty() && !check_set_bit(kill_state,1)){
+			if(!Q[1].empty() && !check_set_bit(kill_state,7)){
 				veh = Q[1].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -307,7 +307,7 @@ void* service_thread(void *args){
 				count++;
 				countN++;
 			}
-			else if(!Q[6].empty() && !check_set_bit(kill_state,10)){
+			else if(!Q[6].empty() && !check_set_bit(kill_state,4)){
 				veh = Q[6].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -318,7 +318,7 @@ void* service_thread(void *args){
 				count++;
 				countS++;
 			}
-			if(!Q[7].empty() && !check_set_bit(kill_state,7)){
+			if(!Q[7].empty() && !check_set_bit(kill_state,1)){
 				veh = Q[7].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -329,7 +329,7 @@ void* service_thread(void *args){
 				count++;
 				countS++;
 			}
-			else if(!Q[0].empty() && !check_set_bit(kill_state,4)){
+			else if(!Q[0].empty() && !check_set_bit(kill_state,10)){
 				veh = Q[0].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -342,7 +342,7 @@ void* service_thread(void *args){
 			}
 		}
 		else if(traffic_sig == 'B'){
-			if(!Q[6].empty() && !check_set_bit(kill_state,10)){
+			if(!Q[6].empty() && !check_set_bit(kill_state,4)){
 				veh = Q[6].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -353,7 +353,7 @@ void* service_thread(void *args){
 				count++;
 				countS++;
 			}
-			if(!Q[0].empty() && !check_set_bit(kill_state,4)){
+			if(!Q[0].empty() && !check_set_bit(kill_state,10)){
 				veh = Q[0].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -366,7 +366,7 @@ void* service_thread(void *args){
 			}
 		}
 		if(traffic_sig == 'C'){
-			if(!Q[4].empty() && !check_set_bit(kill_state,4)){
+			if(!Q[4].empty() && !check_set_bit(kill_state,10)){
 				veh = Q[4].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -377,7 +377,7 @@ void* service_thread(void *args){
 				count++;
 				countE++;
 			}
-			else if(!Q[9].empty() && !check_set_bit(kill_state,1)){
+			else if(!Q[9].empty() && !check_set_bit(kill_state,7)){
 				veh = Q[9].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -388,7 +388,7 @@ void* service_thread(void *args){
 				count++;
 				countW++;
 			}
-			if(!Q[10].empty() && !check_set_bit(kill_state,10)){
+			if(!Q[10].empty() && !check_set_bit(kill_state,4)){
 				veh = Q[10].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -399,7 +399,7 @@ void* service_thread(void *args){
 				count++;
 				countW++;
 			}
-			else if(!Q[3].empty() && !check_set_bit(kill_state,7)){
+			else if(!Q[3].empty() && !check_set_bit(kill_state,1)){
 				veh = Q[3].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -412,7 +412,7 @@ void* service_thread(void *args){
 			}
 		}
 		else if(traffic_sig == 'D'){
-			if(!Q[9].empty() && !check_set_bit(kill_state,1)){
+			if(!Q[9].empty() && !check_set_bit(kill_state,7)){
 				veh = Q[9].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
@@ -423,7 +423,7 @@ void* service_thread(void *args){
 				count++;
 				countW++;
 			}
-			if(!Q[3].empty() && !check_set_bit(kill_state,7)){
+			if(!Q[3].empty() && !check_set_bit(kill_state,1)){
 				veh = Q[3].front();
 				gettimeofday(&end_temp, NULL);
 				fprintf(Veh_Service_log,"%0.2f ",((double)end_temp.tv_sec + (double)end_temp.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
