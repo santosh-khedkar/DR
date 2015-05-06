@@ -9,7 +9,7 @@
  	
 struct car{
 	char direction; /*N,E,S,W */
+	char intersection[25];  /*Name of the intersection*/
 	u_short Vehicle_ID; /*Vehicle no*/
-	int sleep_time; /*sleep time at the intersection*/
 	u_short SID; /* Source ID*/
 };

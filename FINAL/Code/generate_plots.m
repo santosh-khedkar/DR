@@ -78,24 +78,6 @@ function generate_plots(TRAF_log,NOCS_log,Q_log)
     for i = 1: length(NOCS{1})
         hold on;
         if(NOCS{2}(i) == 0)
-            plot(NOCS{1}(i),NOCS{7}(i),'*','color','green');
-        elseif(NOCS{2}(i) == 1)
-            plot(NOCS{1}(i),NOCS{7}(i),'*','color','yellow');
-        elseif(NOCS{2}(i) == 2)
-            plot(NOCS{1}(i),NOCS{7}(i),'*','color','blue');
-        elseif(NOCS{2}(i) == 3)
-            plot(NOCS{1}(i),NOCS{7}(i),'*','color','red');
-        end
-    end
-    hold off;
-    xlabel('time');
-    ylabel('NOCS-S');
-
-
-    subplot(5,1,5);
-    for i = 1: length(NOCS{1})
-        hold on;
-        if(NOCS{2}(i) == 0)
             plot(NOCS{1}(i),NOCS{6}(i),'*','color','green');
         elseif(NOCS{2}(i) == 1)
             plot(NOCS{1}(i),NOCS{6}(i),'*','color','yellow');
@@ -107,9 +89,10 @@ function generate_plots(TRAF_log,NOCS_log,Q_log)
     end
     hold off;
     xlabel('time');
-    ylabel('NOCS-W');
+    ylabel('NOCS-S');
 
-    subplot(5,1,4);
+
+    subplot(5,1,5);
     for i = 1: length(NOCS{1})
         hold on;
         if(NOCS{2}(i) == 0)
@@ -120,6 +103,23 @@ function generate_plots(TRAF_log,NOCS_log,Q_log)
             plot(NOCS{1}(i),NOCS{5}(i),'*','color','blue');
         elseif(NOCS{2}(i) == 3)
             plot(NOCS{1}(i),NOCS{5}(i),'*','color','red');
+        end
+    end
+    hold off;
+    xlabel('time');
+    ylabel('NOCS-W');
+
+    subplot(5,1,4);
+    for i = 1: length(NOCS{1})
+        hold on;
+        if(NOCS{2}(i) == 0)
+            plot(NOCS{1}(i),NOCS{7}(i),'*','color','green');
+        elseif(NOCS{2}(i) == 1)
+            plot(NOCS{1}(i),NOCS{7}(i),'*','color','yellow');
+        elseif(NOCS{2}(i) == 2)
+            plot(NOCS{1}(i),NOCS{7}(i),'*','color','blue');
+        elseif(NOCS{2}(i) == 3)
+            plot(NOCS{1}(i),NOCS{7}(i),'*','color','red');
         end
     end
     hold off;
