@@ -1,7 +1,8 @@
 /*
- 	node.cpp
+ 	controller.cpp
   	Created by Santosh Narayankhedkar on 04/20/2015
- 	Copyright (c) 2015 Narayankhedkar. All rights reserved.
+	University of Southern California-Information Sciences Institute 
+	email: santoshn@isi.edu
  	USAGE: ./<node_name> -d <dist_type> -f <config_file> -n <north_node/none> -w <west_node/none> -s <south_node/none> -e <east_node/none>
 */
 
@@ -48,7 +49,8 @@ FILE *TRAF_log;								/*Traffic log*/
 FILE *NOCS_log;   							/*No. of Cars Serviced*/
 FILE *Q_log;	   						 	/*Size of the queues*/
 FILE *Veh_Service_log;						/*Vehicle log for service thread*/
-FILE *Veh_Client_log[4];						/*Vehicle log for client thread*/
+FILE *Veh_Client_log[4];					/*Vehicle log for client thread*/
+FILE *Veh_Server_log[4];					/*Vehicle log for server thread*/
 queue<car*> Q[12];     						/*Input queues*/
 u_short kill_state = 0 ; 					/*0000|Q12|Q11|Q10|Q9|Q8|Q7|Q6|Q5|Q4|Q3|Q2|Q1*/
 u_short update_serv_state[4]; 				/*Received Update */
@@ -482,10 +484,18 @@ E --->40000
 
 void* server_thread(void *args){
 	int *i =(int *)args;
+	char Vehs_str[50];
 	int portno,n,sockfd, newsockfd,dir = *i,queue_bit;
 	socklen_t clilen;
 	struct car* veh;
 	struct sockaddr_in serv_addr, cli_addr;
+	struct timeval start,end;
+
+	strcpy(Vehs_str,intersection);
+	strcat(Vehs_str,node_name[dir]);
+	strcat(Vehs_str,"Veh_Server_log.txt");
+
+	Veh_Server_log[dir] = fopen(Vehs_str,"w");		/*Vehicle client log*/
 
 	if(dir == 0){
 		portno = 10000;
@@ -522,6 +532,7 @@ void* server_thread(void *args){
         exit(0);
     }
     cout<<"server thread accepted:"<<node_name[dir]<<endl;
+    gettimeofday(&start,NULL);
     while(1){
     	veh = (struct car*)malloc(sizeof(struct car));
     	n = recv(newsockfd,veh,sizeof(struct car),0);
@@ -532,6 +543,12 @@ void* server_thread(void *args){
 
   		/*Sleeing for 1 second before putting it to the queue*/
   		usleep(1000000);
+  		gettimeofday(&end, NULL);
+		fprintf(Veh_Server_log[dir],"%0.2f ",((double)end.tv_sec + (double)end.tv_usec / 1000000) - ((double)start.tv_sec + (double)start.tv_usec / 1000000));
+		fflush(Veh_Server_log[dir]);
+		fprintf(Veh_Server_log[dir],"INT:%s DIR:%c SID:%d VID:%d\n",veh->intersection,veh->direction,veh->SID,veh->Vehicle_ID);
+		fflush(Veh_Server_log[dir]);
+
   		queue_bit = (dir * 3) + veh->SID - 1;
   		Q[queue_bit].push(veh);
   	}
